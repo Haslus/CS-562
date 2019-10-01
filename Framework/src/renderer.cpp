@@ -19,11 +19,10 @@ using json = nlohmann::json;
 
 
 #include <random>
-
+#include <ctime>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
-
 #include <glm/gtc/matrix_transform.hpp>
 
 
@@ -50,6 +49,7 @@ void error_callback(int error, const char* error_message)
 */
 bool Renderer::entry_point()
 {
+	srand(static_cast <unsigned> (time(0)));
 	render_initialize();
 	render_update();
 	render_exit();
@@ -84,7 +84,7 @@ void Renderer::updateImGUI()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	//ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 	renderImGUI();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -104,16 +104,34 @@ void Renderer::renderImGUI()
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
 
-	if (!scene_lights.empty())
+
+	if(ImGui::Button("Create Light in Origin"))
 	{
-		ImGui::DragFloat3("Light Position", &scene_lights[0].position.x, 0.5f, -200, 200);
-		ImGui::DragFloat3("Light Color", &scene_lights[0].color.x, 0.01f, 0, 1);
-		ImGui::DragFloat("Light Constant", &scene_lights[0].constant, 0.001f, 0, 1,"%.4f");
-		ImGui::DragFloat("Light Linear", &scene_lights[0].linear, 0.001f, 0, 1, "%.6f");
-		ImGui::DragFloat("Light Quadratic", &scene_lights[0].quadratic, 0.00001f, 0, 1, "%.8f");
+		scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f });
 	}
 
-	ImGui::DragFloat("Ambient", &ambient, 0.01f, 0.0f, 1.0f);
+	if (ImGui::Button("Create Light in Random Position"))
+	{
+		const float min = 0;
+		const float max = 50;
+		float x = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
+		float y = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
+		float z = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
+		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1,1,1),1,0.007f,0.0011f });
+	}
+	
+	if (!scene_lights.empty())
+	{
+		static int light_index = 0;
+		ImGui::DragInt("Light Index", &light_index, 1, 0, scene_lights.size() - 1);
+		ImGui::DragFloat3("Light Position", &scene_lights[light_index].position.x, 0.5f, -200, 200);
+		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.01f, 0, 1);
+		ImGui::DragFloat("Light Constant", &scene_lights[light_index].constant, 0.001f, 0, 1,"%.4f");
+		ImGui::DragFloat("Light Linear", &scene_lights[light_index].linear, 0.001f, 0, 1, "%.6f");
+		ImGui::DragFloat("Light Quadratic", &scene_lights[light_index].quadratic, 0.00001f, 0, 1, "%.8f");
+	}
+
+	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
 
 	ImGui::End();
 
@@ -207,6 +225,8 @@ void Renderer::render_initialize()
 
 	read_JSON("./data/scenes/scene.json");
 
+	objects.push_back(Object(new Model(models[0])));
+
 	//Configure lighting pass shader
 	lightingPassShader.Use();
 	lightingPassShader.SetInt("gPosition", 0);
@@ -215,7 +235,7 @@ void Renderer::render_initialize()
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f });
+	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f,new Model(models[1]) });
 
 }
 
@@ -236,19 +256,39 @@ void Renderer::render_update()
 
 		//Geometry Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+		glDepthMask(GL_TRUE);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//Optimization
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		//
 		gBufferShader.Use();
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 
-		for (auto model : models)
-			model.Draw(gBufferShader);
+		for (auto obj : objects)
+			obj.Draw(gBufferShader);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//Optimization
+		glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+		//
+
+		glEnable(GL_STENCIL_TEST);
+
+
 
 		//Lighting Pass
+		//Optimization
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_ONE, GL_ONE);
+		//
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		lightingPassShader.Use();
+		lightingPassShader.SetMat4("projection", proj);
+		lightingPassShader.SetMat4("view", m_cam.ViewMatrix);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
 		glActiveTexture(GL_TEXTURE1);
@@ -263,6 +303,9 @@ void Renderer::render_update()
 			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Constant", scene_lights[i].constant);
 			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Linear", scene_lights[i].linear);
 			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Quadratic", scene_lights[i].quadratic);
+
+			scene_light.model->transform.SetScale(glm::vec3(scene_light.radius));
+			scene_light.model->Draw(lightingPassShader);
 		}
 		lightingPassShader.SetVec3("viewPos", m_cam.camPos);
 		lightingPassShader.SetFloat("Ambient", ambient);
@@ -280,12 +323,14 @@ void Renderer::render_update()
 		shader.SetMat4("view", m_cam.ViewMatrix);
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
-			mat4 model = glm::mat4(1.0f);
+			/*mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, scene_lights[i].position);
 			model = glm::scale(model, glm::vec3(1));
 			shader.SetMat4("model", model);
 			shader.SetVec3("lightColor", scene_lights[i].color);
-			renderCube();
+			renderCube();*/
+			scene_light.model->transform.SetScale(glm::vec3(scene_light.radius));
+			scene_light.model->Draw(shader);
 		}
 
 		updateImGUI();

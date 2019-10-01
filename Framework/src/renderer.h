@@ -9,7 +9,7 @@
 *
 */
 #pragma once
-
+#include "object.h"
 #include "model.h"
 #include "shader.h"
 #include "light.h"
@@ -61,6 +61,8 @@ private:
 	float ambient = 0;
 
 	glm::mat4x4 proj;
+	std::vector<Object> objects;
+
 public:
 	Renderer() {};
 	bool entry_point();

@@ -95,7 +95,6 @@ class Model
 {
 public:
 
-
 	Model(const std::string& path, bool gamma = false);
 	void Draw(Shader shader);
 
