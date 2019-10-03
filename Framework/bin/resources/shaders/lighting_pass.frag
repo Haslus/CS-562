@@ -1,6 +1,5 @@
 #version 400
 layout (location = 0) out vec4 lightTex;
-in vec2 TexCoords;
 
 out vec4 FragColor;
 
@@ -20,10 +19,17 @@ struct Light {
 };
 
 uniform Light light;
+uniform vec2 ScreenSize;
+
+vec2 CalcTexCoords()
+{
+	return gl_FragCoord.xy / ScreenSize;
+}
 
 void main()
 {             
 	//Get data from G-Buffer
+	vec2 TexCoords = CalcTexCoords();
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec3 Normal = texture(gNormal, TexCoords).rgb;
     vec3 Diffuse = texture(gAlbedoSpec, TexCoords).rgb;

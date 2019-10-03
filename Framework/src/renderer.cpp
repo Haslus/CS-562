@@ -234,10 +234,17 @@ void Renderer::render_initialize()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightTex, 0);
-	unsigned int light_attachments[1] = { GL_COLOR_ATTACHMENT0 };
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, lightTex, 0);
+	unsigned int light_attachments[1] = { GL_COLOR_ATTACHMENT4 };
 	glDrawBuffers(1, light_attachments);
 
+	//Create a depth buffer
+	unsigned int lboDepth;
+	glGenRenderbuffers(1, &lboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, lboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, lboDepth);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	read_JSON("./data/scenes/scene.json");
 
@@ -282,7 +289,6 @@ void Renderer::render_update()
 		for (auto obj : objects)
 			obj.Draw(gBufferShader);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 
 		//Lighting Pass
@@ -297,7 +303,7 @@ void Renderer::render_update()
 		lightingPassShader.SetMat4("view", m_cam.ViewMatrix);
 		lightingPassShader.SetVec3("viewPos", m_cam.camPos);
 		lightingPassShader.SetFloat("Ambient", ambient);
-
+		lightingPassShader.SetVec2("ScreenSize", vec2(width, height));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
 		glActiveTexture(GL_TEXTURE1);
@@ -314,33 +320,34 @@ void Renderer::render_update()
 			lightingPassShader.SetFloat("light.Linear", scene_lights[i].linear);
 			lightingPassShader.SetFloat("light.Quadratic", scene_lights[i].quadratic);
 
-			renderQuad();
+			scene_lights[i].model->transform.SetScale(glm::vec3(3));
+			scene_lights[i].model->Draw(lightingPassShader);
 		}
 		
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+	/*	glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+*/
 		//Render Lights
-		shader.Use();
-		shader.SetMat4("projection", proj);
-		shader.SetMat4("view", m_cam.ViewMatrix);
-		for (unsigned int i = 0; i < scene_lights.size(); i++)
-		{
-			/*mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, scene_lights[i].position);
-			model = glm::scale(model, glm::vec3(1));
-			shader.SetMat4("model", model);
-			shader.SetVec3("lightColor", scene_lights[i].color);
-			renderCube();*/
-			scene_lights[i].model->transform.SetScale(glm::vec3(1));
-			scene_lights[i].model->Draw(shader);
-		}
+		//shader.Use();
+		//shader.SetMat4("projection", proj);
+		//shader.SetMat4("view", m_cam.ViewMatrix);
+		//for (unsigned int i = 0; i < scene_lights.size(); i++)
+		//{
+		//	/*mat4 model = glm::mat4(1.0f);
+		//	model = glm::translate(model, scene_lights[i].position);
+		//	model = glm::scale(model, glm::vec3(1));
+		//	shader.SetMat4("model", model);
+		//	shader.SetVec3("lightColor", scene_lights[i].color);
+		//	renderCube();*/
+		//	scene_lights[i].model->transform.SetScale(glm::vec3(1));
+		//	scene_lights[i].model->Draw(shader);
+		//}
 
 		updateImGUI();
 		glfwSwapBuffers(window);
