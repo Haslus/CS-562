@@ -99,7 +99,7 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)gPosition, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gNormal, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gAlbedoSpec, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-
+	ImGui::Image((void*)(intptr_t)lightTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -107,7 +107,7 @@ void Renderer::renderImGUI()
 
 	if(ImGui::Button("Create Light in Origin"))
 	{
-		scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f });
+		scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f, new Model(models[1]) });
 	}
 
 	if (ImGui::Button("Create Light in Random Position"))
@@ -117,7 +117,7 @@ void Renderer::renderImGUI()
 		float x = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
 		float y = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
 		float z = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
-		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1,1,1),1,0.007f,0.0011f });
+		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1,1,1),1,0.007f,0.0011f, new Model(models[1]) });
 	}
 	
 	if (!scene_lights.empty())
@@ -181,7 +181,7 @@ void Renderer::render_initialize()
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 10000.f);
 
-	//GL_CALL(glEnable(GL_BLEND));
+	
 	glEnable(GL_DEPTH_TEST);
 
 
@@ -223,6 +223,22 @@ void Renderer::render_initialize()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+
+	//Create Light Buffer
+	glGenFramebuffers(1, &lightBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
+
+	glGenTextures(1, &lightTex);
+	glBindTexture(GL_TEXTURE_2D, lightTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightTex, 0);
+	unsigned int light_attachments[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, light_attachments);
+
+
 	read_JSON("./data/scenes/scene.json");
 
 	objects.push_back(Object(new Model(models[0])));
@@ -236,7 +252,7 @@ void Renderer::render_initialize()
 
 	//Create light
 	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f,new Model(models[1]) });
-
+	scene_lights.push_back(Light{ vec3(0,25,25),vec3(1,1,1),1,0.007f,0.0011f,new Model(models[1]) });
 }
 
 /**
@@ -247,6 +263,7 @@ void Renderer::render_update()
 	
 	while (!glfwWindowShouldClose(window))
 	{
+		
 		float currentFrame = (double)glfwGetTime();
 		dt = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -256,12 +273,8 @@ void Renderer::render_update()
 
 		//Geometry Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-		glDepthMask(GL_TRUE);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		//Optimization
-		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_BLEND);
-		//
 		gBufferShader.Use();
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
@@ -270,25 +283,21 @@ void Renderer::render_update()
 			obj.Draw(gBufferShader);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//Optimization
-		glDepthMask(GL_FALSE);
-		glDisable(GL_DEPTH_TEST);
-		//
-
-		glEnable(GL_STENCIL_TEST);
-
-
+		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 
 		//Lighting Pass
-		//Optimization
+		//Blending
+		glDepthMask(GL_FALSE);
 		glEnable(GL_BLEND);
-		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_ONE, GL_ONE);
-		//
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		lightingPassShader.Use();
 		lightingPassShader.SetMat4("projection", proj);
 		lightingPassShader.SetMat4("view", m_cam.ViewMatrix);
+		lightingPassShader.SetVec3("viewPos", m_cam.camPos);
+		lightingPassShader.SetFloat("Ambient", ambient);
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
 		glActiveTexture(GL_TEXTURE1);
@@ -296,21 +305,21 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
 
+		
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
-			lightingPassShader.SetVec3("lights[" + std::to_string(i) + "].Position", scene_lights[i].position);
-			lightingPassShader.SetVec3("lights[" + std::to_string(i) + "].Color", scene_lights[i].color);
-			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Constant", scene_lights[i].constant);
-			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Linear", scene_lights[i].linear);
-			lightingPassShader.SetFloat("lights[" + std::to_string(i) + "].Quadratic", scene_lights[i].quadratic);
+			lightingPassShader.SetVec3("light.Position", scene_lights[i].position);
+			lightingPassShader.SetVec3("light.Color", scene_lights[i].color);
+			lightingPassShader.SetFloat("light.Constant", scene_lights[i].constant);
+			lightingPassShader.SetFloat("light.Linear", scene_lights[i].linear);
+			lightingPassShader.SetFloat("light.Quadratic", scene_lights[i].quadratic);
 
-			scene_light.model->transform.SetScale(glm::vec3(scene_light.radius));
-			scene_light.model->Draw(lightingPassShader);
+			renderQuad();
 		}
-		lightingPassShader.SetVec3("viewPos", m_cam.camPos);
-		lightingPassShader.SetFloat("Ambient", ambient);
-		renderQuad();
-
+		
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -329,8 +338,8 @@ void Renderer::render_update()
 			shader.SetMat4("model", model);
 			shader.SetVec3("lightColor", scene_lights[i].color);
 			renderCube();*/
-			scene_light.model->transform.SetScale(glm::vec3(scene_light.radius));
-			scene_light.model->Draw(shader);
+			scene_lights[i].model->transform.SetScale(glm::vec3(1));
+			scene_lights[i].model->Draw(shader);
 		}
 
 		updateImGUI();
