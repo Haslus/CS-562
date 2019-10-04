@@ -1,11 +1,10 @@
-#version 400
-layout (location = 0) out vec4 lightTex;
+#version 450
 
 out vec4 FragColor;
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedoSpec;
+layout(binding = 0) uniform sampler2D gPosition;
+layout(binding = 1) uniform sampler2D gNormal;
+layout(binding = 2) uniform sampler2D gAlbedoSpec;
 uniform vec3 viewPos;
 uniform float Ambient;
 
@@ -20,10 +19,11 @@ struct Light {
 
 uniform Light light;
 uniform vec2 ScreenSize;
+//in vec2 TexCoords;
 
 vec2 CalcTexCoords()
 {
-	return gl_FragCoord.xy / ScreenSize;
+	return vec2(gl_FragCoord.x / ScreenSize.x, gl_FragCoord.y / ScreenSize.y) ;
 }
 
 void main()
@@ -65,5 +65,5 @@ void main()
 	
     FragColor = vec4(lighting, 1.0);
 
-	lightTex = FragColor;
+
 }

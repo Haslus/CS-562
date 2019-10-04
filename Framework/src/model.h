@@ -19,7 +19,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 
-unsigned int TextureFromFile(const char* path, bool gamma = false);
+bool TextureFromFile(const char* path, unsigned int & textureID, bool gamma = false);
 
 
 struct Vertex

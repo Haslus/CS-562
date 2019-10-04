@@ -54,7 +54,7 @@ private:
 	unsigned int gBuffer, lightBuffer;
 	Shader gBufferShader;
 	Shader lightingPassShader;
-	unsigned int gPosition, gNormal, gAlbedoSpec;
+	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth;
 	unsigned int lightTex;
 	unsigned int depthTex;
 

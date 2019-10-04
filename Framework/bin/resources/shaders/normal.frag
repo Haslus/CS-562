@@ -1,5 +1,5 @@
 #version 400 core
-layout (location = 0) out vec4 FragColor;
+out vec4 FragColor;
 
 uniform vec3 lightColor;
 

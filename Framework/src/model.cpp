@@ -90,9 +90,9 @@ void Mesh::Draw(Shader shader)
 
 	}
 	//Set material properties
-	shader.SetFloat("diffuse", material.diffuse.x);
-	shader.SetFloat("specular", material.specular.x);
-	shader.SetFloat("shininess", material.shininess);
+	shader.SetFloat("diffuse", material.diffuse.x != 0 ? material.diffuse.x : 0);
+	shader.SetFloat("specular", material.specular.x != 0 ? material.specular.x : 0);
+	shader.SetFloat("shininess", material.shininess != 0 ? material.shininess : 0);
 
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
@@ -249,11 +249,14 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	if (!skip)
 	{
 		Texture texture;
-		texture.m_id = TextureFromFile(str.C_Str());
-		texture.m_type = "Diffuse";
-		texture.m_path = str.C_Str();
-		textures.push_back(texture);
-		textures_loaded.push_back(texture);
+		if (TextureFromFile(str.C_Str(), texture.m_id))
+		{
+			texture.m_type = "Diffuse";
+			texture.m_path = str.C_Str();
+			textures.push_back(texture);
+			textures_loaded.push_back(texture);
+		}
+		
 	}
 	skip = false;
 	material->GetTexture(aiTextureType_SPECULAR, 0, &str);
@@ -271,11 +274,13 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	if (!skip)
 	{
 		Texture texture;
-		texture.m_id = TextureFromFile(str.C_Str());
-		texture.m_type = "Specular";
-		texture.m_path = str.C_Str();
-		textures.push_back(texture);
-		textures_loaded.push_back(texture);
+		if (TextureFromFile(str.C_Str(), texture.m_id))
+		{
+			texture.m_type = "Specular";
+			texture.m_path = str.C_Str();
+			textures.push_back(texture);
+			textures_loaded.push_back(texture);
+		}
 	}
 	skip = false;
 	material->GetTexture(aiTextureType_HEIGHT, 0, &str);
@@ -293,11 +298,13 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	if (!skip)
 	{
 		Texture texture;
-		texture.m_id = TextureFromFile(str.C_Str());
-		texture.m_type = "NormalMap";
-		texture.m_path = str.C_Str();
-		textures.push_back(texture);
-		textures_loaded.push_back(texture);
+		if (TextureFromFile(str.C_Str(), texture.m_id))
+		{
+			texture.m_type = "NormalMap";
+			texture.m_path = str.C_Str();
+			textures.push_back(texture);
+			textures_loaded.push_back(texture);
+		}
 	}
 	
 	return Mesh(vertices, indices, textures, Material{ specular,diffuse,ambient,shininess });
@@ -307,17 +314,18 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 * @brief 	Loads the a texture from the given path
 */
 
-unsigned int TextureFromFile(const char * path, bool gamma)
+bool TextureFromFile(const char * path,unsigned int & textureID, bool gamma)
 {
 	std::string filename = std::string(path);
-	unsigned int textureID;
-	glGenTextures(1,&textureID);
+
 
 	int width, height, comps;
 	unsigned char* data = stbi_load(filename.c_str(), &width, &height, &comps, 0);
 
 	if (data)
 	{
+		glGenTextures(1, &textureID);
+
 		GLenum format;
 		switch (comps)
 		{
@@ -353,9 +361,12 @@ unsigned int TextureFromFile(const char * path, bool gamma)
 
 	}
 	else
+	{
 		std::cout << "Texture failed to load at path: " << path << std::endl;
+		stbi_image_free(data);
+		return false;
+	}
 
-	stbi_image_free(data);
 
-	return textureID;
+	return true;
 }

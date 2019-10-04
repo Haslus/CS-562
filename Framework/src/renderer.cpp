@@ -182,8 +182,7 @@ void Renderer::render_initialize()
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 10000.f);
 
 	
-	glEnable(GL_DEPTH_TEST);
-
+	glEnable(GL_CULL_FACE);
 
 	//Create G-Buffer
 
@@ -211,16 +210,19 @@ void Renderer::render_initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+	//Depth buffer
+	glGenTextures(1, &gDepth);
+	glBindTexture(GL_TEXTURE_2D, gDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
 	//Tell attachments
 	unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
 	glDrawBuffers(3, attachments);
-	//Create a depth buffer
-	unsigned int rboDepth;
-	glGenRenderbuffers(1, &rboDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
 
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
@@ -231,19 +233,19 @@ void Renderer::render_initialize()
 
 	glGenTextures(1, &lightTex);
 	glBindTexture(GL_TEXTURE_2D, lightTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, lightTex, 0);
-	unsigned int light_attachments[1] = { GL_COLOR_ATTACHMENT4 };
-	glDrawBuffers(1, light_attachments);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightTex, 0);
 
-	//Create a depth buffer
-	unsigned int lboDepth;
-	glGenRenderbuffers(1, &lboDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, lboDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, lboDepth);
+	unsigned int attachment = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment);
+
+	//glBindTexture(GL_TEXTURE_2D, gDepth);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	read_JSON("./data/scenes/scene.json");
@@ -283,21 +285,28 @@ void Renderer::render_update()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		//Optimization
 		gBufferShader.Use();
+		glCullFace(GL_BACK);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 
 		for (auto obj : objects)
 			obj.Draw(gBufferShader);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 
 		//Lighting Pass
+		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 		//Blending
 		glDepthMask(GL_FALSE);
+		
+		glDepthFunc(GL_GREATER);
+		glDisable(GL_DEPTH_TEST);
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_FRONT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		lightingPassShader.Use();
 		lightingPassShader.SetMat4("projection", proj);
 		lightingPassShader.SetMat4("view", m_cam.ViewMatrix);
@@ -326,6 +335,7 @@ void Renderer::render_update()
 		
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	/*	glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
