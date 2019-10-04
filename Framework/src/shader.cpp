@@ -101,6 +101,13 @@ void Shader::SetVec3(const std::string & name, vec3 value)
 	glUniform3fv(glGetUniformLocation(program, name.c_str()),1, &value[0]);
 }
 /**
+* @brief 	Set vector of size 4 value in the Shader
+*/
+void Shader::SetVec4(const std::string & name, vec4 value)
+{
+	glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, &value[0]);
+}
+/**
 * @brief 	Set 4x4 matrix value in the Shader
 */
 void Shader::SetMat4(const std::string & name, mat4 mat)

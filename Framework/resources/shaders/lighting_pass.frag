@@ -1,12 +1,10 @@
-#version 400
-
-in vec2 TexCoords;
+#version 450
 
 out vec4 FragColor;
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedoSpec;
+layout(binding = 0) uniform sampler2D gPosition;
+layout(binding = 1) uniform sampler2D gNormal;
+layout(binding = 2) uniform sampler2D gAlbedoSpec;
 uniform vec3 viewPos;
 uniform float Ambient;
 
@@ -19,16 +17,24 @@ struct Light {
     float Quadratic;
 };
 
-const int NR_LIGHTS = 8;
-uniform Light lights[NR_LIGHTS];
+uniform Light light;
+uniform vec2 ScreenSize;
+//in vec2 TexCoords;
+
+vec2 CalcTexCoords()
+{
+	return vec2(gl_FragCoord.x / ScreenSize.x, gl_FragCoord.y / ScreenSize.y) ;
+}
 
 void main()
 {             
 	//Get data from G-Buffer
+	vec2 TexCoords = CalcTexCoords();
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec3 Normal = texture(gNormal, TexCoords).rgb;
     vec3 Diffuse = texture(gAlbedoSpec, TexCoords).rgb;
     float Specular = texture(gAlbedoSpec, TexCoords).a - 1;
+
 	//Also get the material properties stored on the G-Buffer
 	float Diffuse_material = texture(gPosition, TexCoords).a;
 	float Shininess_material = texture(gNormal, TexCoords).a;
@@ -37,23 +43,27 @@ void main()
     vec3 lighting  = Diffuse * Ambient;
     vec3 viewDir  = normalize(viewPos - FragPos);
 
-    for(int i = 0; i < NR_LIGHTS; i++)
-    {
-        //Calculate distance between light source and current fragment
-        float distance = length(lights[i].Position - FragPos);
-        //Calculate diffuse
-        vec3 lightDir = normalize(lights[i].Position - FragPos);
-        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lights[i].Color * Diffuse_material;
-        //Calculate specular
-        vec3 halfwayDir = normalize(lightDir + viewDir);  
-        float spec = pow(max(dot(Normal, halfwayDir), 0.0), Shininess_material);
-        vec3 specular = lights[i].Color * spec * Specular;
-		//Apply attenuation
-        float attenuation = 1.0 / (1.0 + lights[i].Linear * distance + lights[i].Quadratic * distance * distance);
-        diffuse *= attenuation;
-        specular *= attenuation;
-        lighting += diffuse + specular;
-    }   
+
+	//Calculate distance between light source and current fragment
+	float distance = length(light.Position - FragPos);
+
+	//Calculate diffuse
+	vec3 lightDir = normalize(light.Position - FragPos);
+	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * light.Color * Diffuse_material;
+
+	//Calculate specular
+	vec3 halfwayDir = normalize(lightDir + viewDir);  
+	float spec = pow(max(dot(Normal, halfwayDir), 0.0), Shininess_material);
+	vec3 specular = light.Color * spec * Specular;
+
+	//Apply attenuation
+	float attenuation = 1.0 / (1.0 + light.Linear * distance + light.Quadratic * distance * distance);
+	diffuse *= attenuation;
+	specular *= attenuation;
+	lighting += diffuse + specular;
+    
 	
     FragColor = vec4(lighting, 1.0);
+
+
 }

@@ -34,10 +34,12 @@ private:
 	void render_update();
 	void render_exit();
 	void get_input();
+	void updateShaders();
 
 	void read_JSON(const std::string& path);
 
 	Shader shader;
+	Shader renderShader;
 	unsigned ID = 1;
 
 	float dt = 0.0f;

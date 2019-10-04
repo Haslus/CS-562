@@ -1,9 +1,11 @@
-#version 400 core
-layout (location = 0) out vec4 FragColor;
+#version 450 core
+out vec4 FragColor;
 
-uniform vec3 lightColor;
+in vec2 TexCoords;
+
+layout(binding = 0) uniform sampler2D screenTex;
 
 void main()
 {           
-    FragColor = vec4(lightColor, 1.0);
+    FragColor = texture(screenTex, TexCoords);
 }

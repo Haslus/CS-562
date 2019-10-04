@@ -99,6 +99,7 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)gPosition, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gNormal, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gAlbedoSpec, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)gDepth, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)lightTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::End();
 
@@ -107,7 +108,7 @@ void Renderer::renderImGUI()
 
 	if(ImGui::Button("Create Light in Origin"))
 	{
-		scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f, new Model(models[1]) });
+		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
 	}
 
 	if (ImGui::Button("Create Light in Random Position"))
@@ -124,11 +125,15 @@ void Renderer::renderImGUI()
 	{
 		static int light_index = 0;
 		ImGui::DragInt("Light Index", &light_index, 1, 0, scene_lights.size() - 1);
-		ImGui::DragFloat3("Light Position", &scene_lights[light_index].position.x, 0.5f, -200, 200);
+		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.01f, 0, 1);
-		ImGui::DragFloat("Light Constant", &scene_lights[light_index].constant, 0.001f, 0, 1,"%.4f");
-		ImGui::DragFloat("Light Linear", &scene_lights[light_index].linear, 0.001f, 0, 1, "%.6f");
-		ImGui::DragFloat("Light Quadratic", &scene_lights[light_index].quadratic, 0.00001f, 0, 1, "%.8f");
+
+		/*float lightMax = std::fmaxf(std::fmaxf(scene_lights[light_index].color.r, scene_lights[light_index].color.g), scene_lights[light_index].color.b);
+		scene_lights[light_index].radius = (-scene_lights[light_index].linear + glm::sqrt(scene_lights[light_index].linear * scene_lights[light_index].linear 
+			- 4 * scene_lights[light_index].quadratic * (scene_lights[light_index].constant - (256.0 / 5.0) * lightMax)))
+			/ (2 * scene_lights[light_index].quadratic);
+			*/
+		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
 	}
 
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
@@ -171,6 +176,10 @@ void Renderer::render_initialize()
 	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 	glfwSwapInterval(1);
 
+#if _DEBUG
+	setup_gl_debug();
+#endif
+
 	//Initialize ImGUI
 	initImGUI();
 
@@ -178,6 +187,7 @@ void Renderer::render_initialize()
 	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
+	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 10000.f);
 
@@ -241,8 +251,7 @@ void Renderer::render_initialize()
 	unsigned int attachment = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, &attachment);
 
-	//glBindTexture(GL_TEXTURE_2D, gDepth);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
 	
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -260,8 +269,7 @@ void Renderer::render_initialize()
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.007f,0.0011f,new Model(models[1]) });
-	scene_lights.push_back(Light{ vec3(0,25,25),vec3(1,1,1),1,0.007f,0.0011f,new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
 }
 
 /**
@@ -283,11 +291,13 @@ void Renderer::render_update()
 		//Geometry Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//Optimization
 		gBufferShader.Use();
+		glDisable(GL_BLEND);
 		glCullFace(GL_BACK);
+		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LESS);
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 
@@ -301,7 +311,7 @@ void Renderer::render_update()
 		glDepthMask(GL_FALSE);
 		
 		glDepthFunc(GL_GREATER);
-		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
@@ -323,41 +333,53 @@ void Renderer::render_update()
 		
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
-			lightingPassShader.SetVec3("light.Position", scene_lights[i].position);
-			lightingPassShader.SetVec3("light.Color", scene_lights[i].color);
+			scene_lights[i].model->transform.SetScale(glm::vec3(scene_lights[i].radius));
+
+			lightingPassShader.SetVec4("light.Position", vec4(scene_lights[i].model->transform.Position,1.f));
+			lightingPassShader.SetVec4("light.Color", vec4(scene_lights[i].color,1));
 			lightingPassShader.SetFloat("light.Constant", scene_lights[i].constant);
 			lightingPassShader.SetFloat("light.Linear", scene_lights[i].linear);
 			lightingPassShader.SetFloat("light.Quadratic", scene_lights[i].quadratic);
+			lightingPassShader.SetFloat("light.Radius", scene_lights[i].radius);
 
-			scene_lights[i].model->transform.SetScale(glm::vec3(3));
 			scene_lights[i].model->Draw(lightingPassShader);
 		}
 		
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
 
+		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glCullFace(GL_BACK);
+		shader.Use();
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, lightTex);
+		renderQuad();
 
-	/*	glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-*/
+
 		//Render Lights
-		//shader.Use();
-		//shader.SetMat4("projection", proj);
-		//shader.SetMat4("view", m_cam.ViewMatrix);
-		//for (unsigned int i = 0; i < scene_lights.size(); i++)
-		//{
-		//	/*mat4 model = glm::mat4(1.0f);
-		//	model = glm::translate(model, scene_lights[i].position);
-		//	model = glm::scale(model, glm::vec3(1));
-		//	shader.SetMat4("model", model);
-		//	shader.SetVec3("lightColor", scene_lights[i].color);
-		//	renderCube();*/
-		//	scene_lights[i].model->transform.SetScale(glm::vec3(1));
-		//	scene_lights[i].model->Draw(shader);
-		//}
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		//glDepthMask(GL_TRUE);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		renderShader.Use();
+		renderShader.SetMat4("projection", proj);
+		renderShader.SetMat4("view", m_cam.ViewMatrix);
+		for (unsigned int i = 0; i < scene_lights.size(); i++)
+		{
+
+			/*scene_lights[i].model->transform.SetScale(glm::vec3(0.1f));
+			scene_lights[i].model->Draw(renderShader);*/
+			scene_lights[i].model->transform.SetScale(glm::vec3(1));
+			scene_lights[i].model->Draw(renderShader);
+		}
 
 		updateImGUI();
 		glfwSwapBuffers(window);
@@ -382,6 +404,10 @@ void Renderer::get_input()
 
 	double xpos, ypos;
 	glfwGetCursorPos(window, &xpos, &ypos);
+
+	if (glfwGetKey(window, GLFW_KEY_F5)) {
+		updateShaders();
+	}
 
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2))
 	{
@@ -426,6 +452,13 @@ void Renderer::get_input()
 
 	m_cam.RecalculateViewMatrix();
 
+}
+void Renderer::updateShaders()
+{
+	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
+	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
+	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
+	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
 }
 /**
 * @brief 	Read the JSON file and build the scene

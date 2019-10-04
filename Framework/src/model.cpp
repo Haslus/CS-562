@@ -184,18 +184,23 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		norm.z = mesh->mNormals[i].z;
 
 		vertex.m_normal = norm;
-		//Store tangents
-		tan.x = mesh->mTangents[i].x;
-		tan.y = mesh->mTangents[i].y;
-		tan.z = mesh->mTangents[i].z;
+		if (mesh->mTangents)
+		{
+			//Store tangents
+			tan.x = mesh->mTangents[i].x;
+			tan.y = mesh->mTangents[i].y;
+			tan.z = mesh->mTangents[i].z;
+			vertex.m_tangent = tan;
 
-		vertex.m_tangent = tan;
-		//Store bitangents
-		bitan.x = mesh->mBitangents[i].x;
-		bitan.y = mesh->mBitangents[i].y;
-		bitan.z = mesh->mBitangents[i].z;
+			//Store bitangents
+			bitan.x = mesh->mBitangents[i].x;
+			bitan.y = mesh->mBitangents[i].y;
+			bitan.z = mesh->mBitangents[i].z;
+			vertex.m_bitangent = bitan;
+		}
+		
 
-		vertex.m_bitangent = bitan;
+		
 
 		//Check for textures
 		if (mesh->mTextureCoords[0])

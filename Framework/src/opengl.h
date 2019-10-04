@@ -47,6 +47,5 @@ inline void checkGlError()
 	}
 }
 
-std::vector<glm::vec<4, uint8_t>> take_screenshoot(uint32_t width, uint32_t height);
-std::vector<glm::vec<4, uint8_t>> save_screenshoot(uint32_t width, uint32_t height, const char* filename);
+void setup_gl_debug();
 

@@ -9,17 +9,19 @@ uniform vec3 viewPos;
 uniform float Ambient;
 
 struct Light {
-    vec3 Position;
-    vec3 Color;
+    vec4 Position;
+    vec4 Color;
     
 	float Constant;
     float Linear;
     float Quadratic;
+	float Radius;
 };
 
 uniform Light light;
 uniform vec2 ScreenSize;
 //in vec2 TexCoords;
+#define PI 3.14159265359
 
 vec2 CalcTexCoords()
 {
@@ -45,19 +47,20 @@ void main()
 
 
 	//Calculate distance between light source and current fragment
-	float distance = length(light.Position - FragPos);
+	float distance = length(light.Position.xyz - FragPos);
 
 	//Calculate diffuse
-	vec3 lightDir = normalize(light.Position - FragPos);
-	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * light.Color * Diffuse_material;
+	vec3 lightDir = normalize(light.Position.xyz - FragPos);
+	vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * light.Color.rgb * Diffuse_material;
 
 	//Calculate specular
 	vec3 halfwayDir = normalize(lightDir + viewDir);  
 	float spec = pow(max(dot(Normal, halfwayDir), 0.0), Shininess_material);
-	vec3 specular = light.Color * spec * Specular;
+	vec3 specular = light.Color.rgb * spec * Specular;
 
 	//Apply attenuation
-	float attenuation = 1.0 / (1.0 + light.Linear * distance + light.Quadratic * distance * distance);
+	//float attenuation = 1.0 / (1.0 + light.Linear * distance + light.Quadratic * distance * distance);
+	float attenuation = cos((PI/2) * (distance + distance * distance) / (light.Radius + distance * distance));
 	diffuse *= attenuation;
 	specular *= attenuation;
 	lighting += diffuse + specular;

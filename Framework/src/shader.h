@@ -25,6 +25,7 @@ public:
 	void SetFloat(const std::string& name, float value);
 	void SetVec2(const std::string& name, vec2 value);
 	void SetVec3(const std::string& name, vec3 value);
+	void SetVec4(const std::string& name, vec4 value);
 	void SetMat4(const std::string& name, mat4 mat);
 
 	GLuint program;
