@@ -53,13 +53,18 @@ private:
 
 	std::vector<Model> models;
 
-	unsigned int gBuffer, lightBuffer;
+	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer;
 	Shader gBufferShader;
 	Shader lightingPassShader;
+	Shader edgeDetectionShader;
+	Shader blurShader;
+	Shader ambientShader;
 	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth;
 	unsigned int lightTex;
 	unsigned int depthTex;
-
+	unsigned int EDTex;
+	unsigned int blurTex;
+	unsigned int ambientTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
 

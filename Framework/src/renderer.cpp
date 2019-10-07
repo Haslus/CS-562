@@ -101,6 +101,9 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)gAlbedoSpec, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gDepth, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)lightTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)EDTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)blurTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)ambientTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -188,6 +191,9 @@ void Renderer::render_initialize()
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
+	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
+	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
+	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 10000.f);
 
@@ -227,9 +233,16 @@ void Renderer::render_initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
+	//Ambient buffer
+	glGenTextures(1, &ambientTex);
+	glBindTexture(GL_TEXTURE_2D, ambientTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, ambientTex, 0);
 	//Tell attachments
-	unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-	glDrawBuffers(3, attachments);
+	unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+	glDrawBuffers(4, attachments);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -253,6 +266,42 @@ void Renderer::render_initialize()
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
 	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	//Create Edge Detection Buffer
+	glGenFramebuffers(1, &EDBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, EDBuffer);
+
+	glGenTextures(1, &EDTex);
+	glBindTexture(GL_TEXTURE_2D, EDTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, EDTex, 0);
+
+	unsigned int attachment1 = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment1);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	//Create Blurring Buffer
+	glGenFramebuffers(1, &blurBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, blurBuffer);
+
+	glGenTextures(1, &blurTex);
+	glBindTexture(GL_TEXTURE_2D, blurTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blurTex, 0);
+
+	unsigned int attachment2 = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment2);
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -303,7 +352,7 @@ void Renderer::render_update()
 
 		for (auto obj : objects)
 			obj.Draw(gBufferShader);
-
+		/////////////////////////////////////////
 
 		//Lighting Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
@@ -321,7 +370,6 @@ void Renderer::render_update()
 		lightingPassShader.SetMat4("projection", proj);
 		lightingPassShader.SetMat4("view", m_cam.ViewMatrix);
 		lightingPassShader.SetVec3("viewPos", m_cam.camPos);
-		lightingPassShader.SetFloat("Ambient", ambient);
 		lightingPassShader.SetVec2("ScreenSize", vec2(width, height));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
@@ -347,18 +395,49 @@ void Renderer::render_update()
 		
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
+		/////////////////////////////////////////
+
+		/*Post-processing*/
+		//Edge Detection
+		glBindFramebuffer(GL_FRAMEBUFFER, EDBuffer);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_BACK);
+		glDisable(GL_DEPTH_TEST);
+		edgeDetectionShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, gNormal);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depthTex);
+		renderQuad();
+		////////////////////////////////////////
+		//Blur
+		glBindFramebuffer(GL_FRAMEBUFFER, blurBuffer);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_BACK);
+		glDisable(GL_DEPTH_TEST);
+		blurShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, EDTex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, lightTex);
+		renderQuad();
+		///////////////////////////////////////
 
 		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glCullFace(GL_BACK);
-		shader.Use();
 		glDisable(GL_DEPTH_TEST);
+		shader.Use();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, lightTex);
 		renderQuad();
+		/////////////////////////////////////////
 
+		//Reset Depth to that lights can be drawn
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
@@ -459,6 +538,8 @@ void Renderer::updateShaders()
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
+	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
+	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
 }
 /**
 * @brief 	Read the JSON file and build the scene

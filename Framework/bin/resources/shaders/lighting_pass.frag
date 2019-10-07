@@ -6,7 +6,6 @@ layout(binding = 0) uniform sampler2D gPosition;
 layout(binding = 1) uniform sampler2D gNormal;
 layout(binding = 2) uniform sampler2D gAlbedoSpec;
 uniform vec3 viewPos;
-uniform float Ambient;
 
 struct Light {
     vec4 Position;
@@ -42,7 +41,7 @@ void main()
 	float Shininess_material = texture(gNormal, TexCoords).a;
     
     //Calculate lighting
-    vec3 lighting  = Diffuse * Ambient;
+    vec3 lighting  = vec3(0,0,0);
     vec3 viewDir  = normalize(viewPos - FragPos);
 
 

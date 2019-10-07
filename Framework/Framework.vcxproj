@@ -218,6 +218,12 @@
     <ClCompile Include="src\transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="bin\resources\shaders\ambient.frag" />
+    <None Include="bin\resources\shaders\ambient.vert" />
+    <None Include="bin\resources\shaders\blur.frag" />
+    <None Include="bin\resources\shaders\blur.vert" />
+    <None Include="bin\resources\shaders\edge_detection.frag" />
+    <None Include="bin\resources\shaders\edge_detection.vert" />
     <None Include="resources\shaders\mesh.frag" />
     <None Include="resources\shaders\mesh.vert" />
   </ItemGroup>
