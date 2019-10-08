@@ -21,15 +21,13 @@ struct Light
 		constant = 0;
 		linear = 0;
 		quadratic = 0;
-		float lightMax = std::fmaxf(std::fmaxf(color.r, color.g), color.b);
-		radius = 1;
+		radius = 500;
 		this->model = model;
 	};
 
 	Light(vec3 pos, vec3 col, float cons, float lin, float quad, Model * model) : position(pos), color(col)
 		,constant(cons),linear(lin),quadratic(quad),model(model){
-		float lightMax = std::fmaxf(std::fmaxf(color.r, color.g), color.b);
-		radius = 1;
+		radius = 500;
 		model->transform.SetPosition(pos);
 	};
 

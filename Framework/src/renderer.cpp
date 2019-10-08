@@ -104,6 +104,7 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)EDTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)blurTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)ambientTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)renderTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -327,6 +328,20 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	//Create Render Buffer
+	glGenFramebuffers(1, &renderBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
+
+	glGenTextures(1, &renderTex);
+	glBindTexture(GL_TEXTURE_2D, renderTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTex, 0);
+
+	unsigned int attachment4 = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment4);
+
 	read_JSON("./data/scenes/scene.json");
 
 	objects.push_back(Object(new Model(models[0])));
@@ -339,7 +354,7 @@ void Renderer::render_initialize()
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
 
 	textures[0] = gPosition;
 	textures[1] = gNormal;
@@ -471,6 +486,40 @@ void Renderer::render_update()
 		renderQuad();
 		///////////////////////////////////////
 
+		//Render Texture with Lighting
+		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		shader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, lightTex);
+		renderQuad();
+		/////////////////////////////////////////
+
+		//Set Depth to that lights can be drawn
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderBuffer);
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		//Render Lights
+		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		renderShader.Use();
+		renderShader.SetMat4("projection", proj);
+		renderShader.SetMat4("view", m_cam.ViewMatrix);
+		for (unsigned int i = 0; i < scene_lights.size(); i++)
+		{
+
+			scene_lights[i].model->transform.SetScale(glm::vec3(1));
+			scene_lights[i].model->Draw(renderShader);
+		}
+
+		//Bloom
+
+
+		//////////////////////////////////////////
+
 		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -480,29 +529,7 @@ void Renderer::render_update()
 		renderQuad();
 		/////////////////////////////////////////
 
-		//Reset Depth to that lights can be drawn
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		//Render Lights
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-		//glDepthMask(GL_TRUE);
-		//glClear(GL_COLOR_BUFFER_BIT);
-		renderShader.Use();
-		renderShader.SetMat4("projection", proj);
-		renderShader.SetMat4("view", m_cam.ViewMatrix);
-		for (unsigned int i = 0; i < scene_lights.size(); i++)
-		{
-
-			/*scene_lights[i].model->transform.SetScale(glm::vec3(0.1f));
-			scene_lights[i].model->Draw(renderShader);*/
-			scene_lights[i].model->transform.SetScale(glm::vec3(1));
-			scene_lights[i].model->Draw(renderShader);
-		}
-
 		updateImGUI();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
