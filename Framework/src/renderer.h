@@ -70,6 +70,8 @@ private:
 
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
+	unsigned int textures[8];
+	unsigned int renderTexture;
 
 public:
 	Renderer() {};

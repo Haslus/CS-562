@@ -39,4 +39,6 @@ void main()
 	//Also store in the G-Buffer the material's properties
 	gPosition.a = diffuse;
 	gNormal.a = shininess;
+
+	AmbientBuffer = texture(Diffuse, TexCoords) * ambient;
 }

@@ -7,23 +7,27 @@ in vec2 TexCoords;
 layout(binding = 0) uniform sampler2D EDTex;
 layout(binding = 1) uniform sampler2D sceneTex;
 
-const float offset = 1.0 / 300.0;
+uniform vec2 ScreenSize;
+
 
 void main()
-{           
+{   
+	float offset_x = 1.0 / ScreenSize.x;
+	float offset_y = 1.0 / ScreenSize.y;
+
 	vec2 offsets[9] = 
 	{
-	vec2(-offset,offset),
-	vec2(0,offset),
-	vec2(offset,offset),
+	vec2(-offset_x,offset_y),
+	vec2(0,offset_y),
+	vec2(offset_x,offset_y),
 
-	vec2(-offset,0),
+	vec2(-offset_x,0),
 	vec2(0,0),
-	vec2(offset,0),
+	vec2(offset_x,0),
 
-	vec2(-offset,-offset),
-	vec2(0,-offset),
-	vec2(offset,-offset)
+	vec2(-offset_x,-offset_y),
+	vec2(0,-offset_y),
+	vec2(offset_x,-offset_y)
 	
 	};
 
@@ -37,9 +41,9 @@ void main()
 
 	color += texture(sceneTex, TexCoords).rgb;
 
-	color.r /=9;
-	color.g /=9;
-	color.b /=9;
+	color.r /= 9;
+	color.g /= 9;
+	color.b /= 9;
 
     FragColor = vec4(color,1);
 }

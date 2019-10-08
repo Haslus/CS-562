@@ -7,25 +7,29 @@ in vec2 TexCoords;
 layout(binding = 0) uniform sampler2D normalTex;
 layout(binding = 1) uniform sampler2D depthTex;
 
-const float offset = 1.0 / 300.0;
+uniform vec2 ScreenSize;
+
 const float normal_factor = 0.05;
 const float depth_factor = 0.25;
 
 void main()
-{           
+{
+	float offset_x = 1.0 / ScreenSize.x;
+	float offset_y = 1.0 / ScreenSize.y;
+
 	vec2 offsets[9] = 
 	{
-	vec2(-offset,offset),
-	vec2(0,offset),
-	vec2(offset,offset),
+	vec2(-offset_x,offset_y),
+	vec2(0,offset_y),
+	vec2(offset_x,offset_y),
 
-	vec2(-offset,0),
+	vec2(-offset_x,0),
 	vec2(0,0),
-	vec2(offset,0),
+	vec2(offset_x,0),
 
-	vec2(-offset,-offset),
-	vec2(0,-offset),
-	vec2(offset,-offset)
+	vec2(-offset_x,-offset_y),
+	vec2(0,-offset_y),
+	vec2(offset_x,-offset_y)
 	
 	};
 
@@ -57,6 +61,11 @@ void main()
 		normal_Dx += texture(normalTex, TexCoords + offsets[i]).x * sobel_x[i];
 		normal_Dx += texture(normalTex, TexCoords + offsets[i]).y * sobel_y[i];
 	}
+
+	//normal_Dx /= 8;
+	//normal_Dy /= 8;
+	//depth_Dx /= 8;
+	//depth_Dy /= 8;
 
 	float normal_gradient = sqrt(normal_Dx * normal_Dx + normal_Dy * normal_Dy);
 	float depth_gradient = sqrt(depth_Dx * depth_Dx + depth_Dy * depth_Dy);

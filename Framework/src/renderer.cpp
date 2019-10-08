@@ -130,16 +130,28 @@ void Renderer::renderImGUI()
 		ImGui::DragInt("Light Index", &light_index, 1, 0, scene_lights.size() - 1);
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.01f, 0, 1);
-
-		/*float lightMax = std::fmaxf(std::fmaxf(scene_lights[light_index].color.r, scene_lights[light_index].color.g), scene_lights[light_index].color.b);
-		scene_lights[light_index].radius = (-scene_lights[light_index].linear + glm::sqrt(scene_lights[light_index].linear * scene_lights[light_index].linear 
-			- 4 * scene_lights[light_index].quadratic * (scene_lights[light_index].constant - (256.0 / 5.0) * lightMax)))
-			/ (2 * scene_lights[light_index].quadratic);
-			*/
 		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
 	}
 
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
+
+	if (ImGui::TreeNode("Select Texture to Render"))
+	{
+		static int selected = 5;
+		const std::string textures_name[7] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "FR + Blur" };
+
+		for (int n = 0; n < 7; n++)
+		{
+			char buf[32];
+			sprintf(buf, textures_name[n].c_str(), n);
+			if (ImGui::Selectable(buf, selected == n))
+				selected = n;
+		}
+
+		renderTexture = textures[selected];
+
+		ImGui::TreePop();
+	}
 
 	ImGui::End();
 
@@ -319,6 +331,16 @@ void Renderer::render_initialize()
 
 	//Create light
 	scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
+
+	textures[0] = gPosition;
+	textures[1] = gNormal;
+	textures[2] = gAlbedoSpec;
+	textures[3] = gDepth;
+	textures[4] = EDTex;
+	textures[5] = lightTex;
+	textures[6] = blurTex;
+
+	renderTexture = lightTex;
 }
 
 /**
@@ -349,7 +371,7 @@ void Renderer::render_update()
 		glDepthFunc(GL_LESS);
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
-
+		gBufferShader.SetFloat("ambient", ambient);
 		for (auto obj : objects)
 			obj.Draw(gBufferShader);
 		/////////////////////////////////////////
@@ -405,6 +427,7 @@ void Renderer::render_update()
 		glCullFace(GL_BACK);
 		glDisable(GL_DEPTH_TEST);
 		edgeDetectionShader.Use();
+		edgeDetectionShader.SetVec2("ScreenSize", vec2(width, height));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gNormal);
 		glActiveTexture(GL_TEXTURE1);
@@ -418,6 +441,7 @@ void Renderer::render_update()
 		glCullFace(GL_BACK);
 		glDisable(GL_DEPTH_TEST);
 		blurShader.Use();
+		blurShader.SetVec2("ScreenSize", vec2(width, height));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, EDTex);
 		glActiveTexture(GL_TEXTURE1);
@@ -428,13 +452,21 @@ void Renderer::render_update()
 		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
 		glCullFace(GL_BACK);
 		glDisable(GL_DEPTH_TEST);
+		//Add Global Ambient
 		shader.Use();
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, lightTex);
+		glBindTexture(GL_TEXTURE_2D, ambientTex);
 		renderQuad();
+
+		shader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, renderTexture);
+		renderQuad();
+		glDisable(GL_BLEND);
 		/////////////////////////////////////////
 
 		//Reset Depth to that lights can be drawn
