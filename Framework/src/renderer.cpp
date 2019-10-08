@@ -27,8 +27,8 @@ using json = nlohmann::json;
 
 
 
-const int width = 1920;
-const int height = 1080;
+int width;
+int height;
 
 std::string m_win_name;
 ImGuiWindowFlags m_flags;
@@ -99,7 +99,7 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)gPosition, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gNormal, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)gAlbedoSpec, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)gDepth, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)gLinearDepth, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)lightTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)EDTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)blurTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
@@ -138,7 +138,7 @@ void Renderer::renderImGUI()
 	if (ImGui::TreeNode("Select Texture to Render"))
 	{
 		static int selected = 5;
-		const std::string textures_name[7] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "FR + Blur" };
+		const std::string textures_name[7] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "FR + AntiAliasing" };
 
 		for (int n = 0; n < 7; n++)
 		{
@@ -179,7 +179,8 @@ void Renderer::render_initialize()
 		throw std::invalid_argument("GLFW could not be initialized");
 
 	//Initialize Window
-	window = glfwCreateWindow(width, height, "CS 562 Renderer", NULL, NULL);
+	window = glfwCreateWindow(1920, 1080, "CS 562 Renderer", NULL, NULL);
+	glfwGetFramebufferSize(window, &width, &height);
 
 	if (!window)
 	{
@@ -207,7 +208,7 @@ void Renderer::render_initialize()
 	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
 	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
 
-	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 10000.f);
+	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
 
 	
 	glEnable(GL_CULL_FACE);
@@ -238,13 +239,6 @@ void Renderer::render_initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
-	//Depth buffer
-	glGenTextures(1, &gDepth);
-	glBindTexture(GL_TEXTURE_2D, gDepth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
 	//Ambient buffer
 	glGenTextures(1, &ambientTex);
 	glBindTexture(GL_TEXTURE_2D, ambientTex);
@@ -252,9 +246,24 @@ void Renderer::render_initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, ambientTex, 0);
+	//Linear Depth buffer
+	glGenTextures(1, &gLinearDepth);
+	glBindTexture(GL_TEXTURE_2D, gLinearDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gLinearDepth, 0);
 	//Tell attachments
-	unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-	glDrawBuffers(4, attachments);
+	unsigned int attachments[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,GL_COLOR_ATTACHMENT4 };
+	glDrawBuffers(5, attachments);
+
+	//Depth buffer
+	glGenTextures(1, &gDepth);
+	glBindTexture(GL_TEXTURE_2D, gDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -335,7 +344,7 @@ void Renderer::render_initialize()
 	textures[0] = gPosition;
 	textures[1] = gNormal;
 	textures[2] = gAlbedoSpec;
-	textures[3] = gDepth;
+	textures[3] = gLinearDepth;
 	textures[4] = EDTex;
 	textures[5] = lightTex;
 	textures[6] = blurTex;
@@ -419,6 +428,19 @@ void Renderer::render_update()
 		glDepthMask(GL_TRUE);
 		/////////////////////////////////////////
 
+		//Add Global Ambient
+		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
+		glCullFace(GL_BACK);
+		glDisable(GL_DEPTH_TEST);
+		ambientShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, ambientTex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, lightTex);
+		renderQuad();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		////////////////////////////////////////
+
 		/*Post-processing*/
 		//Edge Detection
 		glBindFramebuffer(GL_FRAMEBUFFER, EDBuffer);
@@ -431,7 +453,7 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gNormal);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, depthTex);
+		glBindTexture(GL_TEXTURE_2D, gLinearDepth);
 		renderQuad();
 		////////////////////////////////////////
 		//Blur
@@ -452,21 +474,10 @@ void Renderer::render_update()
 		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE);
-		glCullFace(GL_BACK);
-		glDisable(GL_DEPTH_TEST);
-		//Add Global Ambient
-		shader.Use();
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, ambientTex);
-		renderQuad();
-
 		shader.Use();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, renderTexture);
 		renderQuad();
-		glDisable(GL_BLEND);
 		/////////////////////////////////////////
 
 		//Reset Depth to that lights can be drawn

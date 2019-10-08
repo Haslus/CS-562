@@ -59,9 +59,8 @@ private:
 	Shader edgeDetectionShader;
 	Shader blurShader;
 	Shader ambientShader;
-	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth;
+	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth, gLinearDepth;
 	unsigned int lightTex;
-	unsigned int depthTex;
 	unsigned int EDTex;
 	unsigned int blurTex;
 	unsigned int ambientTex;
