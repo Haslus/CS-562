@@ -1,14 +1,13 @@
 #version 450
-layout (location = 0) out vec4 FragColor;
+out vec4 FragColor;
 
 in vec2 TexCoords;
 
 layout(binding = 0) uniform sampler2D Diffuse;
-
-uniform float Ambient;
+layout(binding = 1) uniform sampler2D Scene;
 
 void main()
 {
 
-	FragColor = texture(Diffuse,TexCoords) * Ambient;
+	FragColor = vec4(texture(Diffuse,TexCoords).rgb,1) +  vec4(texture(Scene,TexCoords).rgb,1);
 }

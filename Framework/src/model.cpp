@@ -83,9 +83,9 @@ void Mesh::Draw(Shader shader)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
 
-		std::string name = textures[i].m_type;
+		std::string tex_name = textures[i].m_type;
 
-		shader.SetInt(name, i);
+		shader.SetInt(tex_name, i);
 		glBindTexture(GL_TEXTURE_2D, textures[i].m_id);
 
 	}
@@ -95,7 +95,7 @@ void Mesh::Draw(Shader shader)
 	shader.SetFloat("shininess", material.shininess != 0 ? material.shininess : 0);
 
 	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 
 }
@@ -319,7 +319,7 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 * @brief 	Loads the a texture from the given path
 */
 
-bool TextureFromFile(const char * path,unsigned int & textureID, bool gamma)
+bool TextureFromFile(const char * path,unsigned int & textureID)
 {
 	std::string filename = std::string(path);
 
@@ -350,7 +350,9 @@ bool TextureFromFile(const char * path,unsigned int & textureID, bool gamma)
 			break;
 		}
 		default:
-			break;
+			std::cout << "Not valid format texture. " << std::endl;
+			stbi_image_free(data);
+			return false;
 		}
 
 		glBindTexture(GL_TEXTURE_2D, textureID);

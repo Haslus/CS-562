@@ -40,6 +40,7 @@ ImGuiWindowFlags m_flags;
 */
 void error_callback(int error, const char* error_message)
 {
+	std::cout << error;
 	fprintf(stderr, "Error: %s\n", error_message);
 }
 
@@ -131,7 +132,7 @@ void Renderer::renderImGUI()
 	if (!scene_lights.empty())
 	{
 		static int light_index = 0;
-		ImGui::DragInt("Light Index", &light_index, 1, 0, scene_lights.size() - 1);
+		ImGui::DragInt("Light Index", &light_index, 1, 0, static_cast<int>(scene_lights.size() - 1));
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 50);
 		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
@@ -422,7 +423,7 @@ void Renderer::render_initialize()
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1.5,1.5,1.5),1,0.7f,1.8f,new Model(models[1]) });
 
 	textures[0] = gPosition;
 	textures[1] = gNormal;
@@ -447,7 +448,7 @@ void Renderer::render_update()
 	while (!glfwWindowShouldClose(window))
 	{
 		
-		float currentFrame = (double)glfwGetTime();
+		float currentFrame = static_cast<float>(glfwGetTime());
 		dt = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		get_input();
@@ -515,7 +516,8 @@ void Renderer::render_update()
 		/////////////////////////////////////////
 
 		//Add Global Ambient
-		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glCullFace(GL_BACK);
 		glDisable(GL_DEPTH_TEST);
 		ambientShader.Use();
@@ -541,6 +543,7 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, gLinearDepth);
 		renderQuad();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		////////////////////////////////////////
 		//Blur
 		glBindFramebuffer(GL_FRAMEBUFFER, blurBuffer);
@@ -553,18 +556,17 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, EDTex);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, lightTex);
+		glBindTexture(GL_TEXTURE_2D, renderTex);
 		renderQuad();
 		///////////////////////////////////////
 
-		//Render Texture with Lighting Spheres
-		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		shader.Use();
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, lightTex);
-		renderQuad();
-		/////////////////////////////////////////
+		////Render Texture with Lighting Spheres
+		//glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
+		//glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		//shader.Use();
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, lightTex);
+		//renderQuad();
 
 		//Set Depth to that lights can be drawn
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
@@ -619,7 +621,7 @@ void Renderer::render_update()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		blendShader.Use();
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, renderTex);
+		glBindTexture(GL_TEXTURE_2D, blurTex);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, pingpongTex[0]);
 		renderQuad();
@@ -761,7 +763,7 @@ void Renderer::read_JSON(const std::string & path)
 
 }
 
-int main_demo(int argc, char** argv)
+int main_demo()
 {
 	static Renderer render;
 	render.entry_point();

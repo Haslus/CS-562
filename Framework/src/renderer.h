@@ -94,4 +94,4 @@ public:
 	unsigned int cubeVBO = 0;
 };
 
-int main_demo(int argc, char** argv);
+int main_demo();
