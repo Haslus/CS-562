@@ -92,6 +92,7 @@
     <LibraryPath>$(ProjectDir)\dependencies\lib\x64-Release;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)/bin/</OutDir>
     <IntDir>$(SolutionDir)/intermediate/$(Configuration)/</IntDir>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -167,11 +168,13 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>IMGUI_IMPL_OPENGL_LOADER_GLAD;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>gtest.lib;glfw3dll.lib;assimp-vc140-mt.lib;glad.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gtest.lib;glfw3dll.lib;assimp-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\lib\x64-Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -198,12 +201,14 @@
     <ClInclude Include="src\transform.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dependencies\include\glad\glad.c" />
     <ClCompile Include="dependencies\src\imgui\imgui.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_demo.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_draw.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_impl_glfw.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\light.cpp" />
     <ClCompile Include="src\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

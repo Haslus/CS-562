@@ -85,7 +85,7 @@ void Renderer::updateImGUI()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	ImGui::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
 	renderImGUI();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -97,18 +97,28 @@ void Renderer::renderImGUI()
 {
 	ImGui::Begin("G-Buffer images", nullptr, m_flags);
 
-	ImGui::Image((void*)(intptr_t)gPosition, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)gNormal, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)gAlbedoSpec, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)gLinearDepth, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)lightTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)EDTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)blurTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)ambientTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)renderTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)bloomTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)pingpongTex[0], ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
-	ImGui::Image((void*)(intptr_t)blendTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	if (ImGui::ImageButton((void*)(intptr_t)gPosition, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = gPosition;
+	if(ImGui::ImageButton((void*)(intptr_t)gNormal,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = gNormal;
+	if(ImGui::ImageButton((void*)(intptr_t)gAlbedoSpec,	ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = gAlbedoSpec;
+	if(ImGui::ImageButton((void*)(intptr_t)gLinearDepth,	ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = gLinearDepth;
+	if(ImGui::ImageButton((void*)(intptr_t)lightTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = lightTex;
+	if(ImGui::ImageButton((void*)(intptr_t)EDTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = EDTex;
+	if(ImGui::ImageButton((void*)(intptr_t)blurTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = blurTex;
+	if(ImGui::ImageButton((void*)(intptr_t)renderTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = renderTex;
+	if(ImGui::ImageButton((void*)(intptr_t)bloomTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = bloomTex;
+	if(ImGui::ImageButton((void*)(intptr_t)finalpingpongTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = finalpingpongTex;
+	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = blendTex;
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -116,7 +126,7 @@ void Renderer::renderImGUI()
 
 	if(ImGui::Button("Create Light in Origin"))
 	{
-		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1),1,0.7f,1.8f,new Model(models[1]) });
+		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1.5,1.5,1.5), new Model(models[1]) });
 	}
 
 	if (ImGui::Button("Create Light in Random Position"))
@@ -126,7 +136,7 @@ void Renderer::renderImGUI()
 		float x = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
 		float y = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
 		float z = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
-		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1,1,1),1,0.007f,0.0011f, new Model(models[1]) });
+		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1.5,1.5,1.5), new Model(models[1]) });
 	}
 	
 	if (!scene_lights.empty())
@@ -136,27 +146,10 @@ void Renderer::renderImGUI()
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 50);
 		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
+		ImGui::Checkbox("Pause Movement ", &scene_lights[light_index].pause);
 	}
 
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
-
-	if (ImGui::TreeNode("Select Texture to Render"))
-	{
-		static int selected = 5;
-		const std::string textures_name[10] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "AntiAliasing", "Bloom", "Gaussian Blur", "FR + AA + Bloom" };
-
-		for (int n = 0; n < 10; n++)
-		{
-			char buf[32];
-			sprintf(buf, textures_name[n].c_str(), n);
-			if (ImGui::Selectable(buf, selected == n))
-				selected = n;
-		}
-
-		renderTexture = textures[selected];
-
-		ImGui::TreePop();
-	}
 
 	ImGui::End();
 
@@ -171,6 +164,7 @@ void Renderer::exitImGUI()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	clear();
 }
 /**
 * @brief 	Initialize the renderer
@@ -216,7 +210,7 @@ void Renderer::render_initialize()
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 
-	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
+	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 2000.f);
 
 	
 	glEnable(GL_CULL_FACE);
@@ -349,6 +343,15 @@ void Renderer::render_initialize()
 	unsigned int attachment4 = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, &attachment4);
 
+	//Depth buffer
+	unsigned int grenderDepth;
+	glGenTextures(1, &grenderDepth);
+	glBindTexture(GL_TEXTURE_2D, grenderDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, grenderDepth, 0);
+
 	//Create Bloom Buffer
 	glGenFramebuffers(1, &bloomBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, bloomBuffer);
@@ -423,7 +426,7 @@ void Renderer::render_initialize()
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1.5,1.5,1.5),1,0.7f,1.8f,new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1.5,1.5,1.5),new Model(models[1]) });
 
 	textures[0] = gPosition;
 	textures[1] = gNormal;
@@ -452,6 +455,9 @@ void Renderer::render_update()
 		dt = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		get_input();
+		for (auto & it : scene_lights)
+			it.update(currentFrame);
+
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -503,9 +509,6 @@ void Renderer::render_update()
 
 			lightingPassShader.SetVec4("light.Position", vec4(scene_lights[i].model->transform.Position,1.f));
 			lightingPassShader.SetVec4("light.Color", vec4(scene_lights[i].color,1));
-			lightingPassShader.SetFloat("light.Constant", scene_lights[i].constant);
-			lightingPassShader.SetFloat("light.Linear", scene_lights[i].linear);
-			lightingPassShader.SetFloat("light.Quadratic", scene_lights[i].quadratic);
 			lightingPassShader.SetFloat("light.Radius", scene_lights[i].radius);
 
 			scene_lights[i].model->Draw(lightingPassShader);
@@ -517,7 +520,7 @@ void Renderer::render_update()
 
 		//Add Global Ambient
 		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		glCullFace(GL_BACK);
 		glDisable(GL_DEPTH_TEST);
 		ambientShader.Use();
@@ -572,7 +575,6 @@ void Renderer::render_update()
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderBuffer);
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		//Render Lights
 		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
@@ -613,6 +615,7 @@ void Renderer::render_update()
 			if (first_it)
 				first_it = false;
 		}
+		finalpingpongTex = pingpongTex[!horizontal];
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		/////////////////////////////////////////
 
@@ -623,7 +626,7 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, blurTex);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, pingpongTex[0]);
+		glBindTexture(GL_TEXTURE_2D, finalpingpongTex);
 		renderQuad();
 		////////////////////////////////////////
 
@@ -651,6 +654,7 @@ void Renderer::render_exit()
 	exitImGUI();
 	glfwDestroyWindow(window);
 	glfwTerminate();
+
 }
 
 /**
@@ -722,6 +726,11 @@ void Renderer::updateShaders()
 	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
+}
+void Renderer::clear()
+{
+	//glDeleteFramebuffers();
+	//glDeleteTextures();
 }
 /**
 * @brief 	Read the JSON file and build the scene
@@ -798,80 +807,4 @@ void Renderer::renderQuad()
 	glBindVertexArray(quadVAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
-}
-
-/**
-* @brief 	Renders a cube, used for Debugging
-*/
-void Renderer::renderCube()
-{
-	// initialize (if necessary)
-	if (cubeVAO == 0)
-	{
-		float vertices[] = {
-			// back face
-			-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-			 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-			 1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
-			 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-			-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-			-1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
-			// front face
-			-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-			 1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
-			 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-			 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-			-1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
-			-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-			// left face
-			-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-			-1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
-			-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-			-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-			-1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-			-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-			// right face
-			 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-			 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-			 1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
-			 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-			 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-			 1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
-			// bottom face
-			-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-			 1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
-			 1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-			 1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-			-1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-			-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-			// top face
-			-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-			 1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-			 1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
-			 1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-			-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-			-1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
-		};
-		glGenVertexArrays(1, &cubeVAO);
-		glGenBuffers(1, &cubeVBO);
-		// fill buffer
-		glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-		// link vertex attributes
-		glBindVertexArray(cubeVAO);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
-	}
-	// render Cube
-	glBindVertexArray(cubeVAO);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glBindVertexArray(0);
-
-
 }

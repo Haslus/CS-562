@@ -11,9 +11,6 @@ struct Light {
     vec4 Position;
     vec4 Color;
     
-	float Constant;
-    float Linear;
-    float Quadratic;
 	float Radius;
 };
 
@@ -58,10 +55,10 @@ void main()
 	vec3 specular = light.Color.rgb * spec * Specular;
 
 	//Apply attenuation
-	//float attenuation = 1.0 / (1.0 + light.Linear * distance + light.Quadratic * distance * distance);
-	float attenuation = cos((PI/2) * (distance + distance * distance) / (light.Radius + distance * distance));
-	diffuse *= attenuation;
-	specular *= attenuation;
+	float att = clamp(1.0 - distance * distance/(light.Radius * light.Radius),0,1);
+	att *= att;
+	diffuse *= att;
+	specular *= att;
 	lighting += diffuse + specular;
     
 	

@@ -30,11 +30,11 @@ private:
 
 	void render_initialize();
 	void renderQuad();
-	void renderCube();
 	void render_update();
 	void render_exit();
 	void get_input();
 	void updateShaders();
+	void clear();
 
 	void read_JSON(const std::string& path);
 
@@ -71,6 +71,7 @@ private:
 	unsigned int renderTex;
 	unsigned int bloomTex;
 	unsigned int pingpongTex[2];
+	unsigned int finalpingpongTex;
 	unsigned int blendTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
@@ -90,8 +91,6 @@ public:
 
 	unsigned int quadVAO = 0;
 	unsigned int quadVBO;
-	unsigned int cubeVAO = 0;
-	unsigned int cubeVBO = 0;
 };
 
 int main_demo();

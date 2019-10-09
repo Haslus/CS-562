@@ -20,6 +20,9 @@ namespace{
 										 const GLchar* message,
 										 const void* userParam)
 	{
+		length;
+		source;
+		userParam;
 		if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
 		std::cout << "{\n";
 		std::cout << "\tmessage: " << message << "\n";

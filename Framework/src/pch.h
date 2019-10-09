@@ -6,16 +6,14 @@
 #include <cstdio>
 #include <cinttypes>
 #include <vector>
-#include <array>
-#include <unordered_map>
 #include <fstream>
 
 // GLM
 #pragma warning (push)
 #pragma warning (disable: 4201) // nonstandard extension used: nameless struct/union
-#define GLM_FORCE_INLINE
-#define GLM_FORCE_NO_CTOR_INIT
-#define GLM_FORCE_EXPLICIT_CTOR
+//#define GLM_FORCE_INLINE
+//#define GLM_FORCE_NO_CTOR_INIT
+//#define GLM_FORCE_EXPLICIT_CTOR
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

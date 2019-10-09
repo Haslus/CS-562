@@ -26,7 +26,13 @@ std::vector<Texture> textures_loaded;
 /**
 * @brief 	Custom constructor for the Mesh, also creates the data for Rendering
 */
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, 
+Mesh::~Mesh()
+{
+	/*glDeleteVertexArrays(1,&VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &EBO);*/
+}
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
 	std::vector<Texture> textures, Material material)
 {
 	this->vertices = vertices;

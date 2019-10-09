@@ -74,6 +74,7 @@ class Mesh
 {
 public:
 	Mesh() {};
+	~Mesh();
 	Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, 
 		std::vector<Texture> textures, Material material);
 	void Draw(Shader shader);
@@ -111,7 +112,6 @@ private:
 	void LoadModel(const std::string& path);
 	void ProcessNode(aiNode* node, const aiScene* scene);
 	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
-	std::vector<Texture> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string type_name);
 };
 
 
