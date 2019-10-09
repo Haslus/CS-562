@@ -5,6 +5,8 @@ void Light::update(float dt)
 	if (pause)
 		return;
 
-	model->transform.Position.x = glm::cos(dt) * 50.f;
+	time += dt;
+	model->transform.Position.x = cos(time) * 50.f;
+	model->transform.Position.y += cos(time) * dt * 5.0f;
 	model->transform.RecalculateM2W();
 }

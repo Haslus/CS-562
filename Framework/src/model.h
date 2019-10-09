@@ -106,12 +106,12 @@ public:
 	bool gammaCorrection;
 private:
 
-	std::vector<Mesh> m_meshes;
+	std::vector<Mesh*> m_meshes;
 	std::string m_directory;
 
 	void LoadModel(const std::string& path);
 	void ProcessNode(aiNode* node, const aiScene* scene);
-	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+	Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene);
 };
 
 

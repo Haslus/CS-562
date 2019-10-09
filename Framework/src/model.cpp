@@ -24,14 +24,17 @@
 std::vector<Texture> textures_loaded;
 
 /**
-* @brief 	Custom constructor for the Mesh, also creates the data for Rendering
+* @brief 	Custom destructor for the Mesh, also creates the data for Rendering
 */
 Mesh::~Mesh()
 {
-	/*glDeleteVertexArrays(1,&VAO);
+	glDeleteVertexArrays(1,&VAO);
 	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);*/
+	glDeleteBuffers(1, &EBO);
 }
+/**
+* @brief 	Custom constructor for the Mesh, also creates the data for Rendering
+*/
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
 	std::vector<Texture> textures, Material material)
 {
@@ -123,7 +126,7 @@ void Model::Draw(Shader shader)
 	shader.SetMat4("model",this->transform.M2W);
 
 	for (auto mesh : m_meshes)
-		mesh.Draw(shader);
+		mesh->Draw(shader);
 }
 
 /**
@@ -165,7 +168,7 @@ void Model::ProcessNode(aiNode * node, const aiScene * scene)
 /**
 * @brief 	Processes the meshes inside the scene
 */
-Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
+Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
@@ -318,7 +321,7 @@ Mesh Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		}
 	}
 	
-	return Mesh(vertices, indices, textures, Material{ specular,diffuse,ambient,shininess });
+	return new Mesh(vertices, indices, textures, Material{ specular,diffuse,ambient,shininess });
 }
 
 /**

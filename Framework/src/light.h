@@ -32,6 +32,7 @@ struct Light
 	bool pause = false;
 	vec3 color;
 	float radius;
+	float time = 0;
 
 
 };

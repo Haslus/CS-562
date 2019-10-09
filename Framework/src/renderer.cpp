@@ -95,28 +95,39 @@ void Renderer::updateImGUI()
 */
 void Renderer::renderImGUI()
 {
-	ImGui::Begin("G-Buffer images", nullptr, m_flags);
+	ImGui::Begin("All Buffers", nullptr, m_flags);
 
+	ImGui::Text("Position G-Bufffer");
 	if (ImGui::ImageButton((void*)(intptr_t)gPosition, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = gPosition;
+	ImGui::Text("Normal G-Bufffer");
 	if(ImGui::ImageButton((void*)(intptr_t)gNormal,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = gNormal;
+	ImGui::Text("Albedo G-Bufffer");
 	if(ImGui::ImageButton((void*)(intptr_t)gAlbedoSpec,	ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = gAlbedoSpec;
+	ImGui::Text("Linear Depth G-Bufffer");
 	if(ImGui::ImageButton((void*)(intptr_t)gLinearDepth,	ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = gLinearDepth;
+	ImGui::Text("Light Calculation");
 	if(ImGui::ImageButton((void*)(intptr_t)lightTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = lightTex;
+	ImGui::Text("Edge Detection");
 	if(ImGui::ImageButton((void*)(intptr_t)EDTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = EDTex;
+	ImGui::Text("Anti Aliasing (Not Light Model)");
 	if(ImGui::ImageButton((void*)(intptr_t)blurTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blurTex;
+	ImGui::Text("Final Result No Post-Processing");
 	if(ImGui::ImageButton((void*)(intptr_t)renderTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = renderTex;
+	ImGui::Text("Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)bloomTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = bloomTex;
+	ImGui::Text("Blurred Bloom (Pingpong)");
 	if(ImGui::ImageButton((void*)(intptr_t)finalpingpongTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = finalpingpongTex;
+	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
 	ImGui::End();
@@ -126,17 +137,26 @@ void Renderer::renderImGUI()
 
 	if(ImGui::Button("Create Light in Origin"))
 	{
-		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1.5,1.5,1.5), new Model(models[1]) });
+		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1), new Model(models[1]) });
 	}
 
 	if (ImGui::Button("Create Light in Random Position"))
 	{
-		const float min = 0;
-		const float max = 50;
-		float x = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
-		float y = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
-		float z = min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
-		scene_lights.push_back(Light{ vec3(x,y,z),vec3(1.5,1.5,1.5), new Model(models[1]) });
+		const float min_z = -50;
+		const float max_z = 50;
+		const float min_y = 25;
+		const float max_y = 75;
+
+		const float min_col = 0;
+		const float max_col = 1;
+
+		float y = min_y + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_y - min_y)));
+		float z = min_z + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_z - min_z)));
+		float r = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
+		float g = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
+		float b = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
+
+		scene_lights.push_back(Light{ vec3(0,y,z),vec3(r,g,b), new Model(models[1]) });
 	}
 	
 	if (!scene_lights.empty())
@@ -144,9 +164,19 @@ void Renderer::renderImGUI()
 		static int light_index = 0;
 		ImGui::DragInt("Light Index", &light_index, 1, 0, static_cast<int>(scene_lights.size() - 1));
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
-		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 50);
-		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
-		ImGui::Checkbox("Pause Movement ", &scene_lights[light_index].pause);
+		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 1);
+		ImGui::InputFloat("Radius ", &scene_lights[light_index].radius);
+		if(ImGui::Button("Pause Movement"))
+		{
+			for (auto & it : scene_lights)
+				it.pause = true;
+		}
+		if (ImGui::Button("Resume Movement"))
+		{
+			for (auto & it : scene_lights)
+				it.pause = false;
+		}
+
 	}
 
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
@@ -210,7 +240,7 @@ void Renderer::render_initialize()
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 
-	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 2000.f);
+	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
 
 	
 	glEnable(GL_CULL_FACE);
@@ -223,14 +253,14 @@ void Renderer::render_initialize()
 	//Position buffer
 	glGenTextures(1, &gPosition);
 	glBindTexture(GL_TEXTURE_2D, gPosition);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
 	//Normal buffer
 	glGenTextures(1, &gNormal);
 	glBindTexture(GL_TEXTURE_2D, gNormal);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
@@ -244,14 +274,14 @@ void Renderer::render_initialize()
 	//Ambient buffer
 	glGenTextures(1, &ambientTex);
 	glBindTexture(GL_TEXTURE_2D, ambientTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, ambientTex, 0);
 	//Linear Depth buffer
 	glGenTextures(1, &gLinearDepth);
 	glBindTexture(GL_TEXTURE_2D, gLinearDepth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gLinearDepth, 0);
@@ -381,7 +411,7 @@ void Renderer::render_initialize()
 		glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[i]);
 		glBindTexture(GL_TEXTURE_2D, pingpongTex[i]);
 		glTexImage2D(
-			GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL
+			GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
 		);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -402,7 +432,7 @@ void Renderer::render_initialize()
 
 	glGenTextures(1, &blendTex);
 	glBindTexture(GL_TEXTURE_2D, blendTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blendTex, 0);
@@ -418,28 +448,12 @@ void Renderer::render_initialize()
 
 	objects.push_back(Object(new Model(models[0])));
 
-	//Configure lighting pass shader
-	lightingPassShader.Use();
-	lightingPassShader.SetInt("gPosition", 0);
-	lightingPassShader.SetInt("gNormal", 1);
-	lightingPassShader.SetInt("gAlbedoSpec", 2);
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1.5,1.5,1.5),new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),new Model(models[1]) });
 
-	textures[0] = gPosition;
-	textures[1] = gNormal;
-	textures[2] = gAlbedoSpec;
-	textures[3] = gLinearDepth;
-	textures[4] = EDTex;
-	textures[5] = renderTex;
-	textures[6] = blurTex;
-	textures[7] = bloomTex;
-	textures[8] = pingpongTex[0];
-	textures[9] = blendTex;
-
-	renderTexture = renderTex;
+	renderTexture = blendTex;
 }
 
 /**
@@ -456,7 +470,7 @@ void Renderer::render_update()
 		lastFrame = currentFrame;
 		get_input();
 		for (auto & it : scene_lights)
-			it.update(currentFrame);
+			it.update(dt);
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -563,14 +577,6 @@ void Renderer::render_update()
 		renderQuad();
 		///////////////////////////////////////
 
-		////Render Texture with Lighting Spheres
-		//glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
-		//glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		//shader.Use();
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, lightTex);
-		//renderQuad();
-
 		//Set Depth to that lights can be drawn
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderBuffer);
@@ -585,7 +591,7 @@ void Renderer::render_update()
 		renderShader.SetMat4("view", m_cam.ViewMatrix);
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
-			renderShader.SetVec3("Color", scene_lights[i].color);
+			renderShader.SetVec3("color", scene_lights[i].color);
 			scene_lights[i].model->transform.SetScale(glm::vec3(1));
 			scene_lights[i].model->Draw(renderShader);
 		}
@@ -654,6 +660,7 @@ void Renderer::render_exit()
 	exitImGUI();
 	glfwDestroyWindow(window);
 	glfwTerminate();
+	clear();
 
 }
 
@@ -729,8 +736,33 @@ void Renderer::updateShaders()
 }
 void Renderer::clear()
 {
-	//glDeleteFramebuffers();
-	//glDeleteTextures();
+	unsigned int gTextures[5] = { gPosition,gNormal ,gAlbedoSpec ,gDepth,gLinearDepth };
+
+	glDeleteFramebuffers(1, &gBuffer);
+	glDeleteTextures(5, gTextures);
+
+	glDeleteFramebuffers(1, &lightBuffer);
+	glDeleteTextures(1, &lightTex);
+
+	glDeleteFramebuffers(1, &EDBuffer);
+	glDeleteTextures(1, &EDTex);
+
+	glDeleteFramebuffers(1, &blurBuffer);
+	glDeleteTextures(1, &blurTex);
+
+	glDeleteFramebuffers(1, &ambientBuffer);
+	glDeleteTextures(1, &ambientTex);
+
+	glDeleteFramebuffers(1, &renderBuffer);
+	glDeleteTextures(1, &renderTex);
+
+	glDeleteFramebuffers(1, &bloomBuffer);
+	glDeleteTextures(1, &bloomTex);
+
+	glDeleteFramebuffers(1, &blendBuffer);
+	glDeleteTextures(2, pingpongTex);
+
+
 }
 /**
 * @brief 	Read the JSON file and build the scene
