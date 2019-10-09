@@ -53,24 +53,31 @@ private:
 
 	std::vector<Model> models;
 
-	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer;
+	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer;
+	unsigned int pingpongBuffer[2];
 	Shader gBufferShader;
 	Shader lightingPassShader;
 	Shader edgeDetectionShader;
 	Shader blurShader;
 	Shader ambientShader;
+	Shader bloomShader;
+	Shader gaussianblurShader;
+	Shader blendShader;
 	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth, gLinearDepth;
 	unsigned int lightTex;
 	unsigned int EDTex;
 	unsigned int blurTex;
 	unsigned int ambientTex;
 	unsigned int renderTex;
+	unsigned int bloomTex;
+	unsigned int pingpongTex[2];
+	unsigned int blendTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
 
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
-	unsigned int textures[8];
+	unsigned int textures[15];
 	unsigned int renderTexture;
 
 public:

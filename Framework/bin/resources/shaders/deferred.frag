@@ -3,7 +3,6 @@ layout (location = 0) out vec4 gPosition;
 layout (location = 1) out vec4 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 AmbientBuffer;
-layout (location = 4) out vec4 gLinearDepth;
 
 in vec2 TexCoords;
 in vec3 FragPos;
@@ -17,9 +16,6 @@ uniform float diffuse;
 uniform float specular;
 uniform float shininess;
 uniform float ambient;
-
-uniform float zNear = 0.1;
-uniform float zFar = 1000.0;
 
 void main()
 {
@@ -45,9 +41,4 @@ void main()
 	gNormal.a = shininess;
 
 	AmbientBuffer = texture(Diffuse, TexCoords) * ambient;
-
-	float depth = gl_FragCoord.z  * 2.0 - 1.0;
-	float linear_depth = (2.0 * zNear * zFar) / (zFar + zNear - depth * (zFar - zNear));
-	linear_depth /= zFar;
-	gLinearDepth = vec4(linear_depth,linear_depth,linear_depth,1);
 }

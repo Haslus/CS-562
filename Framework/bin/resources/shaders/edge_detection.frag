@@ -9,8 +9,8 @@ layout(binding = 1) uniform sampler2D depthTex;
 
 uniform vec2 ScreenSize;
 
-const float normal_factor = 0.25;
-const float depth_factor = 0.35;
+const float normal_factor = 0.05;
+const float depth_factor = 0.25;
 
 void main()
 {
@@ -59,7 +59,7 @@ void main()
 		depth_Dy += texture(depthTex, TexCoords + offsets[i]).y * sobel_y[i];
 
 		normal_Dx += texture(normalTex, TexCoords + offsets[i]).x * sobel_x[i];
-		normal_Dy += texture(normalTex, TexCoords + offsets[i]).y * sobel_y[i];
+		normal_Dx += texture(normalTex, TexCoords + offsets[i]).y * sobel_y[i];
 	}
 
 	//normal_Dx /= 8;
@@ -69,7 +69,7 @@ void main()
 
 	float normal_gradient = sqrt(normal_Dx * normal_Dx + normal_Dy * normal_Dy);
 	float depth_gradient = sqrt(depth_Dx * depth_Dx + depth_Dy * depth_Dy);
-	float gradient = normal_gradient * normal_factor + depth_gradient * depth_factor; 
+	float gradient = normal_gradient * normal_factor+ depth_gradient * depth_factor; 
 	float blur_factor = clamp(gradient,0,1);
 
     FragColor = vec4(blur_factor,blur_factor,blur_factor,1);

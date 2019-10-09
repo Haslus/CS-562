@@ -9,11 +9,6 @@ layout(binding = 1) uniform sampler2D sceneTex;
 
 uniform vec2 ScreenSize;
 
-float kernel[9] = float[](
-    1.0 / 16, 2.0 / 16, 1.0 / 16,
-    2.0 / 16, 4.0 / 16, 2.0 / 16,
-    1.0 / 16, 2.0 / 16, 1.0 / 16  
-);
 
 void main()
 {   
@@ -38,30 +33,17 @@ void main()
 
 	vec3 color = vec3(0,0,0);
 
-	float g = texture(EDTex,TexCoords).x;
-
-	if(g > 0.2)
+	for(int i = 0; i < 9; i++)
 	{
-		for(int i = 0; i < 9; i++)
-		{
-			vec2 position = TexCoords + offsets[i];
-			color += texture(sceneTex, position).rgb * kernel[i];
-		}
-
-		//color += texture(sceneTex, TexCoords).rgb;
-
-		//color.r /= 10;
-		//color.g /= 10;
-		//color.b /= 10;
-
-		FragColor = vec4(color,1);
+		vec2 position = TexCoords + offsets[i] * texture(EDTex,TexCoords).x;
+		color += texture(sceneTex, position).rgb;
 	}
 
-	else
-	{
-		color = texture(sceneTex, TexCoords).rgb;
-		FragColor = vec4(color,1);
-	}
-	
-	
+	color += texture(sceneTex, TexCoords).rgb;
+
+	color.r /= 9;
+	color.g /= 9;
+	color.b /= 9;
+
+    FragColor = vec4(color,1);
 }

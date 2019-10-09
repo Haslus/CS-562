@@ -105,6 +105,9 @@ void Renderer::renderImGUI()
 	ImGui::Image((void*)(intptr_t)blurTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)ambientTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::Image((void*)(intptr_t)renderTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)bloomTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)pingpongTex[0], ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
+	ImGui::Image((void*)(intptr_t)blendTex, ImVec2(256, 256), ImVec2(0, 1), (ImVec2(1, 0)));
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -130,7 +133,7 @@ void Renderer::renderImGUI()
 		static int light_index = 0;
 		ImGui::DragInt("Light Index", &light_index, 1, 0, scene_lights.size() - 1);
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
-		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.01f, 0, 1);
+		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 50);
 		ImGui::InputFloat("Radius: ", &scene_lights[light_index].radius);
 	}
 
@@ -139,9 +142,9 @@ void Renderer::renderImGUI()
 	if (ImGui::TreeNode("Select Texture to Render"))
 	{
 		static int selected = 5;
-		const std::string textures_name[7] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "FR + AntiAliasing" };
+		const std::string textures_name[10] = { "Position","Normal","Albedo", "Depth","Edge Detection", "Final Result", "AntiAliasing", "Bloom", "Gaussian Blur", "FR + AA + Bloom" };
 
-		for (int n = 0; n < 7; n++)
+		for (int n = 0; n < 10; n++)
 		{
 			char buf[32];
 			sprintf(buf, textures_name[n].c_str(), n);
@@ -208,6 +211,9 @@ void Renderer::render_initialize()
 	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
 	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
 	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
+	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
+	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
+	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
 
@@ -278,7 +284,7 @@ void Renderer::render_initialize()
 
 	glGenTextures(1, &lightTex);
 	glBindTexture(GL_TEXTURE_2D, lightTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightTex, 0);
@@ -334,13 +340,75 @@ void Renderer::render_initialize()
 
 	glGenTextures(1, &renderTex);
 	glBindTexture(GL_TEXTURE_2D, renderTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTex, 0);
 
 	unsigned int attachment4 = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, &attachment4);
+
+	//Create Bloom Buffer
+	glGenFramebuffers(1, &bloomBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, bloomBuffer);
+
+	glGenTextures(1, &bloomTex);
+	glBindTexture(GL_TEXTURE_2D, bloomTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomTex, 0);
+
+	unsigned int attachment3 = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment3);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+	//Create Gaussian Blur Buffer
+	glGenFramebuffers(2, pingpongBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, bloomBuffer);
+	glGenTextures(2, pingpongTex);
+
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongTex[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongTex[i], 0
+		);
+	}
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	//Create Blender Buffer
+	glGenFramebuffers(1, &blendBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, blendBuffer);
+
+	glGenTextures(1, &blendTex);
+	glBindTexture(GL_TEXTURE_2D, blendTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blendTex, 0);
+
+	unsigned int attachment5 = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, &attachment5);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	read_JSON("./data/scenes/scene.json");
 
@@ -361,10 +429,13 @@ void Renderer::render_initialize()
 	textures[2] = gAlbedoSpec;
 	textures[3] = gLinearDepth;
 	textures[4] = EDTex;
-	textures[5] = lightTex;
+	textures[5] = renderTex;
 	textures[6] = blurTex;
+	textures[7] = bloomTex;
+	textures[8] = pingpongTex[0];
+	textures[9] = blendTex;
 
-	renderTexture = lightTex;
+	renderTexture = renderTex;
 }
 
 /**
@@ -486,7 +557,7 @@ void Renderer::render_update()
 		renderQuad();
 		///////////////////////////////////////
 
-		//Render Texture with Lighting
+		//Render Texture with Lighting Spheres
 		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		shader.Use();
@@ -510,15 +581,50 @@ void Renderer::render_update()
 		renderShader.SetMat4("view", m_cam.ViewMatrix);
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
-
+			renderShader.SetVec3("Color", scene_lights[i].color);
 			scene_lights[i].model->transform.SetScale(glm::vec3(1));
 			scene_lights[i].model->Draw(renderShader);
 		}
+		/////////////////////////////////////////
 
 		//Bloom
-
-
+		glBindFramebuffer(GL_FRAMEBUFFER, bloomBuffer);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		bloomShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, renderTex);
+		renderQuad();
 		//////////////////////////////////////////
+
+		//Gaussian Blur
+		bool horizontal = true, first_it = true;
+		int amount = 10;
+		gaussianblurShader.Use();
+		for (int i = 0; i < amount; i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[horizontal]);
+			gaussianblurShader.SetInt("horizontal", horizontal);
+			glBindTexture(GL_TEXTURE_2D, first_it ? bloomTex : pingpongTex[!horizontal]);
+			renderQuad();
+			horizontal = !horizontal;
+			if (first_it)
+				first_it = false;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		/////////////////////////////////////////
+
+		//Blend Gaussian Blur and Scene
+		glBindFramebuffer(GL_FRAMEBUFFER, blendBuffer);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		blendShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, renderTex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, pingpongTex[0]);
+		renderQuad();
+		////////////////////////////////////////
+
 
 		//Render Quad with final texture
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -610,6 +716,10 @@ void Renderer::updateShaders()
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
 	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
 	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
+	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
+	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
+	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
+	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 }
 /**
 * @brief 	Read the JSON file and build the scene
