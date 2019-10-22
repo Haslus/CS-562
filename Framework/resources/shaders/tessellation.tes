@@ -1,1 +1,44 @@
 #version 430
+
+// Phong tess patch data
+struct PhongPatch
+{
+ float termIJ;
+ float termJK;
+ float termIK;
+};
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+const float uTessAlpha = 1.0f;     
+
+layout(triangles, fractional_odd_spacing, ccw) in;
+
+in vec3 outNormal[];
+in vec2 outTexCoords[];
+in outPhongPatch[];
+
+out vec3 finalNormal;
+out vec2 finalTexCoords;
+out vec3 finalPos;
+
+#define Pi  gl_in[0].gl_Position.xyz
+#define Pj  gl_in[1].gl_Position.xyz
+#define Pk  gl_in[2].gl_Position.xyz
+#define tc1 gl_TessCoord
+
+void main()
+{
+	//squared tesscoords 
+	vec3 tc2 = tc1*tc1;
+
+	//compute texcoords and normal
+	finalTexCoords = gl_TessCoords[0] * outTexCorrds[0]
+	+ gl_TessCoords[1] * outTexCorrds[1] + gl_TessCoords[2] * outTexCorrds[2];
+	finalNormal = gl_TessCoords[0] * outNormal[0]
+	+ gl_TessCoords[1] * outNormal[1] + gl_TessCoords[2] * outNormal[2];
+
+
+}

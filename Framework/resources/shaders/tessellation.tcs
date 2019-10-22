@@ -1,11 +1,53 @@
 #version 430
 
+// Phong tess patch data
+struct PhongPatch
+{
+ float termIJ;
+ float termJK;
+ float termIK;
+};
+
 // tessellation levels
 const float uTessLevels = 5.0f;
  
 layout(vertices=3) out;
 
+in vec3 Normal[];
+in vec3 TexCoords[];
+
+out vec3 outNormal[3];
+out vec3 outTexCoords[3];
+out vec3 outPhongPatch[3];
+
+#define Pi  gl_in[0].gl_Position.xyz
+#define Pj  gl_in[1].gl_Position.xyz
+#define Pk  gl_in[2].gl_Position.xyz
+
+float PIi(int i, vec3 q)
+{
+	vec3 q_minus_p = q - gl[i].gl_Position.xyz;
+	return q[gl_InvocationID] - dot(q_minus_p, Normal[i]) 
+		* Normal[i][gl_InvocationID];
+
+}
+
+
 void main()
 {
+	//get data
+	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+	outNormal[gl_InvocationID] = Normal[gl_InvocationID];
+	outTexCoords[gl_InvocationID] = TexCoords[gl_InvocationID];
+
+	//compute patch data
+	outPhongPatch[gl_InvocationID].termIJ = PIi(0, Pj) + PIi(1,Pi);
+	outPhongPatch[gl_InvocationID].termJK = PIi(1, Pk) + PIi(2,Pj);
+	outPhongPatch[gl_InvocationID].termIK = PIi(2, Pi) + PIi(0,Pk);
+
+	//tesselate
+
+	gl_TessLevelOuter[gl_InvocationID] = uTessLevels;
+	gl_TessLevelInner[0] = uTessLevels;
 
 }

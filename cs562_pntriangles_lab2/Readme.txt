@@ -1,0 +1,4 @@
+- The goal of this lab is to implement the PN Triangles paper. 
+- The framework is prepared so that the implementation happens only on the TessMesh.tcs and TessMesh.tes shaders. 
+- Use the provided data structures to solve it.
+- You can play around with the different meshes to test the outputs.
