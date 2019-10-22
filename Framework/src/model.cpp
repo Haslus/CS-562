@@ -85,7 +85,7 @@ void Mesh::SetupMesh()
 /**
 * @brief 	Draws the mesh using the giving shader
 */
-void Mesh::Draw(Shader shader)
+void Mesh::Draw(Shader shader, bool wireframe, bool tessellation)
 {
 	//Set textures
 	for (unsigned i = 0; i < textures.size(); i++)
@@ -103,18 +103,31 @@ void Mesh::Draw(Shader shader)
 	shader.SetFloat("specular", material.specular.x != 0 ? material.specular.x : 0);
 	shader.SetFloat("shininess", material.shininess != 0 ? material.shininess : 0);
 
+	if (wireframe)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	else
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+	if (tessellation)
+	{
+		glPatchParameteri(GL_PATCH_VERTICES, 3);
+		glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
+	}
+	else
+	{
+
+		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+	}
 	glBindVertexArray(0);
 
 }
 /**
 * @brief 	Custom constructor of Model, loads the model
 */
-Model::Model(const std::string& path, bool gamma)
+Model::Model(const std::string& path)
 {
 	LoadModel(path);
-	gammaCorrection = gamma;
 }
 
 /**
@@ -126,7 +139,7 @@ void Model::Draw(Shader shader)
 	shader.SetMat4("model",this->transform.M2W);
 
 	for (auto mesh : m_meshes)
-		mesh->Draw(shader);
+		mesh->Draw(shader, wireframe);
 }
 
 /**

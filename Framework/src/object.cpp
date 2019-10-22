@@ -5,7 +5,7 @@ Object::Object(Model * model)
 	this->model = model;
 }
 
-void Object::Draw(Shader shader)
+void Object::Draw(Shader shader, bool tessellation)
 {
-	model->Draw(shader);
+	model->Draw(shader, tessellation);
 }

@@ -181,6 +181,8 @@ void Renderer::renderImGUI()
 
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
 
+	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
+
 	ImGui::End();
 
 
@@ -229,7 +231,10 @@ void Renderer::render_initialize()
 	initImGUI();
 
 	//Load Shaders
-	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
+	std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
+		"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
+
+	gBufferShader = Shader(tessellation);
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
@@ -239,6 +244,9 @@ void Renderer::render_initialize()
 	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
+
+	
+	//tessellationShader = Shader(tessellation);
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
 
@@ -444,15 +452,15 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	read_JSON("./data/scenes/scene.json");
+	read_JSON("./data/scenes/tessellation.json");
 
 	objects.push_back(Object(new Model(models[0])));
 
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,25,0),vec3(1,1,1),new Model(models[1]) });
-
+	scene_lights.push_back(Light{ vec3(0,5,30),vec3(1,1,1),new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
 	renderTexture = blendTex;
 }
 
@@ -488,8 +496,8 @@ void Renderer::render_update()
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 		gBufferShader.SetFloat("ambient", ambient);
-		for (auto obj : objects)
-			obj.Draw(gBufferShader);
+		for (auto & obj : objects)
+			obj.Draw(gBufferShader, true);
 		/////////////////////////////////////////
 
 		//Lighting Pass

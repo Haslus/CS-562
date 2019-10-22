@@ -63,6 +63,7 @@ private:
 	Shader bloomShader;
 	Shader gaussianblurShader;
 	Shader blendShader;
+	Shader tessellationShader;
 	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth, gLinearDepth;
 	unsigned int lightTex;
 	unsigned int EDTex;

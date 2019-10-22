@@ -77,7 +77,7 @@ public:
 	~Mesh();
 	Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, 
 		std::vector<Texture> textures, Material material);
-	void Draw(Shader shader);
+	void Draw(Shader shader, bool wireframe, bool tessellation = false);
 
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
@@ -96,14 +96,14 @@ class Model
 {
 public:
 
-	Model(const std::string& path, bool gamma = false);
-	void Draw(Shader shader);
+	Model(const std::string& path);
+	void Draw(Shader shader, bool tessellation = false);
 
 	Transform transform;
 
 	unsigned ID = 0;
 
-	bool gammaCorrection;
+	bool wireframe = false;
 private:
 
 	std::vector<Mesh*> m_meshes;

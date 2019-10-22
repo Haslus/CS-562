@@ -6,8 +6,8 @@ class Object
 public:
 
 	Object(Model * model);
-	void Draw(Shader shader);
-private:
+	void Draw(Shader shader, bool tessellation = false);
 	Model * model;
+private:
 
 };
