@@ -235,6 +235,8 @@
     <None Include="bin\resources\shaders\edge_detection.vert" />
     <None Include="bin\resources\shaders\gaussianblur.frag" />
     <None Include="bin\resources\shaders\gaussianblur.vert" />
+    <None Include="bin\resources\shaders\tessellation.tcs" />
+    <None Include="bin\resources\shaders\tessellation.tes" />
     <None Include="resources\shaders\mesh.frag" />
     <None Include="resources\shaders\mesh.vert" />
   </ItemGroup>

@@ -1,13 +1,15 @@
-#version 400
+#version 430
 layout (location = 0) out vec4 gPosition;
 layout (location = 1) out vec4 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 AmbientBuffer;
 layout (location = 4) out vec4 gLinearDepth;
 
-in vec2 TexCoords;
-in vec3 FragPos;
-in mat3 TBN;
+in vec3 finalNormal;
+in vec3 finalTangent;
+in vec3 finalBitangent;
+in vec2 finalTexCoords;
+in vec3 finalPos;
 
 uniform sampler2D Diffuse;
 uniform sampler2D Specular;
@@ -21,16 +23,25 @@ uniform float ambient;
 uniform float zNear = 0.1;
 uniform float zFar = 1000.0;
 
+uniform mat4 model;
+
+
 void main()
 {
 	//Store data on the G-Buffer
-    gPosition = vec4(FragPos,0);
+    gPosition = vec4(finalPos,0);
 
-	vec3 norm = texture(NormalMap,TexCoords).rgb;
+	//Create matrix for tangent space
+	vec3 T = normalize(vec3(model * vec4(finalTangent,   0.0)));
+	vec3 B = -normalize(vec3(model * vec4(finalBitangent, 0.0)));
+	vec3 N = normalize(vec3(model * vec4(finalNormal,    0.0)));
+    mat3 TBN = mat3(T, B, N);
+
+	vec3 norm = texture(NormalMap,finalTexCoords).rgb;
 	norm = normalize(norm * 2.0 - 1.0);
 	gNormal = vec4(normalize(TBN * norm),0);
 
-	gAlbedoSpec = texture(Diffuse, TexCoords);
+	gAlbedoSpec = texture(Diffuse, finalTexCoords);
 
 	//Ignore if alpha is too low
 	if(gAlbedoSpec.a < 0.5f)
@@ -38,13 +49,13 @@ void main()
 		discard;
 	}
 
-	gAlbedoSpec.a = texture(Specular, TexCoords).r * specular + 1;
+	gAlbedoSpec.a = texture(Specular, finalTexCoords).r * specular + 1;
 
 	//Also store in the G-Buffer the material's properties
 	gPosition.a = diffuse;
 	gNormal.a = shininess;
 
-	AmbientBuffer = texture(Diffuse, TexCoords) * ambient;
+	AmbientBuffer = texture(Diffuse, finalTexCoords) * ambient;
 
 	float depth = gl_FragCoord.z  * 2.0 - 1.0;
 	float linear_depth = (2.0 * zNear * zFar) / (zFar + zNear - depth * (zFar - zNear));

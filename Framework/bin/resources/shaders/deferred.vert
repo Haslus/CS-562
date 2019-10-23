@@ -1,14 +1,14 @@
-#version 400
+#version 430
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
 
-out vec3 FragPos;
-out vec2 TexCoords;
-out vec3 Normal;
-out mat3 TBN;
+out vec2 tcs_TexCoords;
+out vec3 tcs_Normal;
+out vec3 tcs_Tangent;
+out vec3 tcs_Bitangent;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -16,17 +16,16 @@ uniform mat4 projection;
 
 void main()
 {
-    vec4 worldPos = model * vec4(aPos, 1.0);
+    //vec4 worldPos = model * vec4(aPos, 1.0);
 
-    FragPos = worldPos.xyz; 
+    //FragPos = worldPos.xyz;
 
-    TexCoords = aTexCoords;
+    //gl_Position = projection * view * worldPos;
 
-    gl_Position = projection * view * worldPos;
+	gl_Position = vec4(aPos, 1.0);
 
-	//Create matrix for tangent space
-	vec3 T = normalize(vec3(model * vec4(aTangent,   0.0)));
-	vec3 B = -normalize(vec3(model * vec4(aBitangent, 0.0)));
-	vec3 N = normalize(vec3(model * vec4(aNormal,    0.0)));
-    TBN = mat3(T, B, N);
+    tcs_TexCoords = aTexCoords;
+	tcs_Normal = aNormal;
+	tcs_Tangent = aTangent;
+	tcs_Bitangent = aBitangent;
 }

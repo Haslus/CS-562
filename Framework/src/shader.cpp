@@ -140,6 +140,7 @@ Shader::Shader(const std::string* paths)
 	glAttachShader(program, tes_shader);
 	glAttachShader(program, fragment_shader);
 	glLinkProgram(program);
+	CheckCompileErrors(program, "PROGRAM");
 }
 
 /**

@@ -112,7 +112,7 @@ void Mesh::Draw(Shader shader, bool wireframe, bool tessellation)
 	if (tessellation)
 	{
 		glPatchParameteri(GL_PATCH_VERTICES, 3);
-		glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
+		glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 	}
 	else
 	{
@@ -134,12 +134,12 @@ Model::Model(const std::string& path)
 * @brief 	Draw the mesh of the model
 * @param	shad
 */
-void Model::Draw(Shader shader)
+void Model::Draw(Shader shader, bool tessellation)
 {
 	shader.SetMat4("model",this->transform.M2W);
 
 	for (auto mesh : m_meshes)
-		mesh->Draw(shader, wireframe);
+		mesh->Draw(shader, wireframe, tessellation);
 }
 
 /**

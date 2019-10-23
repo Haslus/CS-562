@@ -16,12 +16,12 @@ layout(vertices=3) out;
 in vec3 tcs_Normal[];
 in vec3 tcs_Tangent[];
 in vec3 tcs_Bitangent[];
-in vec3 tcs_TexCoords[];
+in vec2 tcs_TexCoords[];
 
 out vec3 tes_Normal[3];
 out vec3 tes_Tangent[3];
 out vec3 tes_Bitangent[3];
-out vec3 tes_TexCoords[3];
+out vec2 tes_TexCoords[3];
 out PhongPatch P_Patch[3];
 
 #define Pi  gl_in[0].gl_Position.xyz
