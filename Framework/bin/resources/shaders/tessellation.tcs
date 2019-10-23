@@ -9,7 +9,11 @@ struct PhongPatch
 };
 
 // tessellation levels
-const float uTessLevels = 1.0f;
+uniform float uTessLevels;
+
+uniform bool adaptiveTesellation;
+uniform vec3 camPos;
+ 
  
 layout(vertices=3) out;
 
@@ -53,7 +57,24 @@ void main()
 
 	//tesselate
 
-	gl_TessLevelOuter[gl_InvocationID] = uTessLevels;
-	gl_TessLevelInner[0] = uTessLevels;
+	if(adaptiveTesellation == true)
+	{
+		float dI = (1 - length(tcs_Normal[0] * (camPos - Pi) / length(camPos - Pi)) ) * uTessLevels;
+		float dJ = (1 - length(tcs_Normal[1] * (camPos - Pj) / length(camPos - Pj)) ) * uTessLevels;
+		float dK = (1 - length(tcs_Normal[2] * (camPos - Pk) / length(camPos - Pk)) ) * uTessLevels;
+
+
+		gl_TessLevelOuter[0] = (dJ + dK)/2.0;		
+		gl_TessLevelOuter[1] = (dI + dK)/2.0;	
+		gl_TessLevelOuter[2] = (dJ + dI)/2.0;	
+		gl_TessLevelInner[0] = (dI + dJ + dK) / 3.0;
+	}
+
+	else
+	{
+		gl_TessLevelOuter[gl_InvocationID] = uTessLevels;
+		gl_TessLevelInner[0] = uTessLevels;
+	}
+	
 
 }

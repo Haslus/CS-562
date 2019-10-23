@@ -182,7 +182,9 @@ void Renderer::renderImGUI()
 	ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
 
 	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
-
+	ImGui::Checkbox("Adaptive Tessellation", &adaptiveTesellation);
+	ImGui::DragFloat("Tessellation Level", &tessLevels, 0.1f, 1, 100);
+	
 	ImGui::End();
 
 
@@ -496,6 +498,10 @@ void Renderer::render_update()
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 		gBufferShader.SetFloat("ambient", ambient);
+		gBufferShader.SetFloat("uTessLevels", tessLevels);
+		gBufferShader.SetBool("adaptiveTesellation", adaptiveTesellation);
+		gBufferShader.SetVec3("camPos", vec3(glm::inverse(objects[0].model->transform.M2W) * vec4(m_cam.camPos,1)));
+		//std::cout << m_cam.camPos.x << std::endl;
 		for (auto & obj : objects)
 			obj.Draw(gBufferShader, true);
 		/////////////////////////////////////////
@@ -731,7 +737,11 @@ void Renderer::get_input()
 }
 void Renderer::updateShaders()
 {
-	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
+	//Load Shaders
+	std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
+		"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
+
+	gBufferShader = Shader(tessellation);
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");

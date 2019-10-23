@@ -76,7 +76,8 @@ private:
 	unsigned int blendTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
-
+	float tessLevels = 1.0;
+	bool adaptiveTesellation = false;
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
 	unsigned int renderTexture;
