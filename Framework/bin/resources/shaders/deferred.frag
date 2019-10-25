@@ -4,12 +4,15 @@ layout (location = 1) out vec4 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out vec4 AmbientBuffer;
 layout (location = 4) out vec4 gLinearDepth;
+layout (location = 5) out vec4 gRefinementDepth;
 
 in vec3 finalNormal;
 in vec3 finalTangent;
 in vec3 finalBitangent;
 in vec2 finalTexCoords;
 in vec3 finalPos;
+
+in float refinementDepth;
 
 uniform sampler2D Diffuse;
 uniform sampler2D Specular;
@@ -24,6 +27,47 @@ uniform float zNear = 0.1;
 uniform float zFar = 1000.0;
 
 uniform mat4 model;
+
+vec4 HSVtoRGB(float hue)
+{
+	float H = mix(270.0,0.0,hue);
+
+	float X = (1 - abs( mod( H / 60.0,2.0) - 1));
+
+	vec3 value;
+
+	if( 0.0 <= H && H < 60.0)
+	{
+		value = vec3(1,X,0);
+	}
+	
+	else if( 60.0 <= H && H < 120.0)
+	{
+		value = vec3(X,1,0);
+	}
+	
+	else if( 120.0 <= H && H < 180.0)
+	{
+		value = vec3(0,1,X);
+	}
+
+	else if( 180.0 <= H && H < 240.0)
+	{
+		value = vec3(0,X,1);
+	}
+
+	else if( 240.0 <= H && H < 300.0)
+	{
+		value = vec3(X,0,1);
+	}
+	else if( 300.0 <= H && H < 360.0)
+	{
+		value = vec3(1,0,X);
+	}
+	
+
+	return vec4(value,1);
+}
 
 
 void main()
@@ -61,4 +105,6 @@ void main()
 	float linear_depth = (2.0 * zNear * zFar) / (zFar + zNear - depth * (zFar - zNear));
 	linear_depth /= zFar;
 	gLinearDepth = vec4(linear_depth,linear_depth,linear_depth,1);
+
+	gRefinementDepth = HSVtoRGB(refinementDepth);
 }

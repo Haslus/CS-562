@@ -22,11 +22,16 @@ in vec3 tes_Bitangent[];
 in vec2 tes_TexCoords[];
 in PhongPatch P_Patch[];
 
+in float tes_refinementDepth[];
+
+
 out vec3 finalNormal;
 out vec3 finalTangent;
 out vec3 finalBitangent;
 out vec2 finalTexCoords;
 out vec3 finalPos;
+
+out float refinementDepth;
 
 #define Pi  gl_in[0].gl_Position.xyz
 #define Pj  gl_in[1].gl_Position.xyz
@@ -65,4 +70,6 @@ void main()
 
 	finalPos = Pos;
 
+	refinementDepth = gl_TessCoord[0] * tes_refinementDepth[0]
+	+ gl_TessCoord[1] * tes_refinementDepth[1] + gl_TessCoord[2] * tes_refinementDepth[2];
 }

@@ -130,6 +130,9 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
+	ImGui::Text("Refinement Depth");
+	if (ImGui::ImageButton((void*)(intptr_t)refinementDepthBuffer, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = refinementDepthBuffer;
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -295,9 +298,18 @@ void Renderer::render_initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gLinearDepth, 0);
+
+	//Refinment depth buffer
+	glGenTextures(1, &refinementDepthBuffer);
+	glBindTexture(GL_TEXTURE_2D, refinementDepthBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, refinementDepthBuffer, 0);
+
 	//Tell attachments
-	unsigned int attachments[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,GL_COLOR_ATTACHMENT4 };
-	glDrawBuffers(5, attachments);
+	unsigned int attachments[6] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,GL_COLOR_ATTACHMENT4,GL_COLOR_ATTACHMENT5 };
+	glDrawBuffers(6, attachments);
 
 	//Depth buffer
 	glGenTextures(1, &gDepth);
@@ -696,12 +708,12 @@ void Renderer::get_input()
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2))
 	{
 
-		float speed = 50.0f;
+		float speed = 40.0f;
 		auto  side = glm::normalize(glm::cross(m_cam.camFront, { 0, 1, 0 }));
 		auto  up = glm::normalize(glm::cross(m_cam.camFront, side));
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-			speed *= 3.0f;
+			speed *= 0.5f;
 		}
 		if (glfwGetKey(window, GLFW_KEY_W)) {
 			m_cam.camPos += glm::normalize(m_cam.camFront) * dt * speed;
