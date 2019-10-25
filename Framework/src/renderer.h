@@ -78,6 +78,8 @@ private:
 	float ambient = 0;
 	float tessLevels = 1.0;
 	bool adaptiveTesellation = false;
+	float LOD_distance = 1.0f;
+	float LOD_pow = 3.0f;
 	bool LOD = false;
 	glm::mat4x4 proj;
 	std::vector<Object> objects;

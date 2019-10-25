@@ -13,8 +13,8 @@ uniform float uTessLevels;
 
 uniform bool adaptiveTesellation;
 uniform bool LOD;
-uniform float distance_LOD = 5.0;
-uniform float LOD_pow = 3.0;
+uniform float LOD_distance = 10.0;
+uniform float LOD_pow = 10.0;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -69,6 +69,7 @@ void main()
 	{
 		vec4 camPos = inverse(view * model) * vec4(0,0,0,1);
 
+
 		float dI = (1 - abs(dot( tcs_Normal[0] , normalize(camPos.xyz - Pi) )));
 		float dJ = (1 - abs(dot( tcs_Normal[1] , normalize(camPos.xyz - Pj) )));
 		float dK = (1 - abs(dot( tcs_Normal[2] , normalize(camPos.xyz - Pk) )));
@@ -79,7 +80,9 @@ void main()
 		float factor = 1.0;
 
 		
-		
+		tes_refinementDepth[gl_InvocationID] = d[gl_InvocationID];
+
+
 		
 		if(gl_InvocationID == 0)
 		{
@@ -88,42 +91,38 @@ void main()
 			if(LOD == true)
 			{
 				float distance = length(camPos.xyz - ((Pj + Pk) / 2.0));
-				factor = 1.0 / max(1.0, (distance / distance_LOD));
+				factor = 1.0 / max(1.0, (distance / LOD_distance));
 				factor = pow(factor,LOD_pow);
 
 				float distance_average = length(camPos.xyz - ((Pi + Pj + Pk) / 3.0));
-				factor_average = 1.0 / max(1.0, (distance_average / distance_LOD));
+				factor_average = 1.0 / max(1.0, (distance_average / LOD_distance));
 				factor_average = pow(factor_average,LOD_pow);
 			}
 
 			gl_TessLevelOuter[gl_InvocationID] = factor * uTessLevels * (dJ + dK) / 2.0;	
 			gl_TessLevelInner[0] = factor_average * uTessLevels * (dI + dJ + dK) / 3.0;
-
-			tes_refinementDepth[gl_InvocationID] = factor;
 		}
 		else if(gl_InvocationID == 1)
 		{
 			if(LOD == true)
 			{
 				float distance = length(camPos.xyz - ((Pi + Pk) / 2.0));
-				factor = 1.0 / max(1.0, (distance / distance_LOD));
+				factor = 1.0 / max(1.0, (distance / LOD_distance));
 				factor = pow(factor,LOD_pow);
 
 			}
 			gl_TessLevelOuter[gl_InvocationID] = factor * uTessLevels * (dI + dK) / 2.0;	
-			tes_refinementDepth[gl_InvocationID] = factor;
 		}
 		else
 		{
 			if(LOD == true)
 			{
 				float distance = length(camPos.xyz - ((Pj + Pi) / 2.0));
-				factor = 1.0 / max(1.0, (distance / distance_LOD));
+				factor = 1.0 / max(1.0, (distance / LOD_distance));
 				factor = pow(factor,LOD_pow);
 
 			}
-			gl_TessLevelOuter[gl_InvocationID] = factor * uTessLevels * (dJ + dI) / 2.0;
-			tes_refinementDepth[gl_InvocationID] = factor;
+			gl_TessLevelOuter[gl_InvocationID] = factor * uTessLevels * (dJ + dI) / 2.0;	
 		}
 
 		
