@@ -22,7 +22,7 @@ struct Light
 	};
 
 	Light(vec3 pos, vec3 col, Model * model) : color(col) ,model(model){
-		radius = 75;
+		radius = 125;
 		model->transform.SetPosition(pos);
 	};
 
