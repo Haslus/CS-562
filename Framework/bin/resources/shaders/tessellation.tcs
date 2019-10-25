@@ -12,7 +12,11 @@ struct PhongPatch
 uniform float uTessLevels;
 
 uniform bool adaptiveTesellation;
-uniform vec3 camPos;
+uniform bool LOD;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
  
  
 layout(vertices=3) out;
@@ -59,9 +63,18 @@ void main()
 
 	if(adaptiveTesellation == true)
 	{
-		float dI = (1 - length(tcs_Normal[0] * (camPos - Pi) / length(camPos - Pi)) ) * uTessLevels;
-		float dJ = (1 - length(tcs_Normal[1] * (camPos - Pj) / length(camPos - Pj)) ) * uTessLevels;
-		float dK = (1 - length(tcs_Normal[2] * (camPos - Pk) / length(camPos - Pk)) ) * uTessLevels;
+		vec4 camPos = inverse(view * model) * vec4(0,0,0,1);
+		
+		float myTessLevels = uTessLevels;
+		if(LOD)
+		{
+		}
+
+
+		float dI = (1 - dot( tcs_Normal[0] , normalize(camPos.xyz - Pi) ) ) * uTessLevels;
+		float dJ = (1 - dot( tcs_Normal[1] , normalize(camPos.xyz - Pj) ) ) * uTessLevels;
+		float dK = (1 - dot( tcs_Normal[2] , normalize(camPos.xyz - Pk) ) ) * uTessLevels;
+
 
 
 		gl_TessLevelOuter[0] = (dJ + dK)/2.0;		

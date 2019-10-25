@@ -184,7 +184,7 @@ void Renderer::renderImGUI()
 	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
 	ImGui::Checkbox("Adaptive Tessellation", &adaptiveTesellation);
 	ImGui::DragFloat("Tessellation Level", &tessLevels, 0.1f, 1, 100);
-	
+	ImGui::Checkbox("Level of Detail", &LOD);
 	ImGui::End();
 
 
@@ -500,7 +500,9 @@ void Renderer::render_update()
 		gBufferShader.SetFloat("ambient", ambient);
 		gBufferShader.SetFloat("uTessLevels", tessLevels);
 		gBufferShader.SetBool("adaptiveTesellation", adaptiveTesellation);
-		gBufferShader.SetVec3("camPos", vec3(glm::inverse(objects[0].model->transform.M2W) * vec4(m_cam.camPos,1)));
+		gBufferShader.SetBool("LOD", LOD);
+
+		//gBufferShader.SetVec3("camPos", vec3(glm::inverse(objects[0].model->transform.M2W) * vec4(m_cam.camPos,1)));
 		//std::cout << m_cam.camPos.x << std::endl;
 		for (auto & obj : objects)
 			obj.Draw(gBufferShader, true);
