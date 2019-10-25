@@ -1,6 +1,6 @@
 #version 430
 
-// Phong tess patch data
+// Phong patch data
 struct PhongPatch
 {
  float valueIJ;
@@ -12,7 +12,7 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-const float uTessAlpha = 1.0f;     
+uniform float uTessAlpha = 1.0f;     
 
 layout(triangles, fractional_odd_spacing, ccw) in;
 
@@ -43,7 +43,7 @@ void main()
 	//squared tesscoords 
 	vec3 tc2 = tc1*tc1;
 
-	//compute texcoords and normal
+	//compute texcoords, normal,tangent and bitangent
 	finalTexCoords = gl_TessCoord[0] * tes_TexCoords[0]
 	+ gl_TessCoord[1] * tes_TexCoords[1] + gl_TessCoord[2] * tes_TexCoords[2];
 
@@ -70,6 +70,7 @@ void main()
 
 	finalPos = Pos;
 
+	//also compute refinement depth for later rendering
 	refinementDepth = gl_TessCoord[0] * tes_refinementDepth[0]
 	+ gl_TessCoord[1] * tes_refinementDepth[1] + gl_TessCoord[2] * tes_refinementDepth[2];
 }

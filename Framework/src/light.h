@@ -29,7 +29,7 @@ struct Light
 	void update(float dt);
 
 	Model * model;
-	bool pause = false;
+	bool pause = true;
 	vec3 color;
 	float radius;
 	float time = 0;

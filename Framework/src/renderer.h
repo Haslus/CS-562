@@ -79,11 +79,13 @@ private:
 	float tessLevels = 1.0;
 	bool adaptiveTesellation = false;
 	float LOD_distance = 1.0f;
-	float LOD_pow = 3.0f;
+	int LOD_pow = 3;
 	bool LOD = false;
+	float tessAlpha = 1.0f;
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
 	unsigned int renderTexture;
+
 
 public:
 	Renderer() {};
