@@ -53,7 +53,7 @@ private:
 
 	std::vector<Model> models;
 
-	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer;
+	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer, decalBuffer;
 	unsigned int pingpongBuffer[2];
 	Shader gBufferShader;
 	Shader lightingPassShader;
@@ -64,6 +64,7 @@ private:
 	Shader gaussianblurShader;
 	Shader blendShader;
 	Shader tessellationShader;
+	Shader decalShader;
 	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth, gLinearDepth;
 	unsigned int lightTex;
 	unsigned int EDTex;
@@ -76,12 +77,12 @@ private:
 	unsigned int blendTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
-	float tessLevels = 1.0;
+	/*float tessLevels = 1.0;
 	bool adaptiveTesellation = false;
 	float LOD_distance = 1.0f;
 	int LOD_pow = 3;
 	bool LOD = false;
-	float tessAlpha = 1.0f;
+	float tessAlpha = 1.0f;*/
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
 	std::vector<Decal> decals;

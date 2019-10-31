@@ -117,7 +117,11 @@ class Decal
 {
 public:
 	Decal(const std::string & diffuse, const std::string & normal, Model * model);
-	void Draw();
+	enum DrawMode
+	{
+		FULLDECAL, ONLYPIXELS, SHADING
+	};
+	void Draw(Shader shader, DrawMode drawMode);
 private:
 	Model * cube;
 	std::vector<Texture> textures;

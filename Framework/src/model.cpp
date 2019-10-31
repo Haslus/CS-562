@@ -422,6 +422,30 @@ Decal::Decal(const std::string & diffuse, const std::string & normal, Model * mo
 	}
 }
 
-void Decal::Draw()
+void Decal::Draw(Shader shader, DrawMode drawMode)
 {
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[1].m_id);
+	switch (drawMode)
+	{
+	case Decal::FULLDECAL:
+	{
+		cube->Draw(shader);
+		break;
+	}
+	case Decal::ONLYPIXELS:
+	{
+
+		break;
+	}
+	case Decal::SHADING:
+	{
+
+		break;
+	}
+	default:
+		break;
+	}
 }

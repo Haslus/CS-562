@@ -130,9 +130,9 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
-	ImGui::Text("Refinement Depth");
+	/*ImGui::Text("Refinement Depth");
 	if (ImGui::ImageButton((void*)(intptr_t)refinementDepthBuffer, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
-		renderTexture = refinementDepthBuffer;
+		renderTexture = refinementDepthBuffer;*/
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -183,16 +183,15 @@ void Renderer::renderImGUI()
 		}
 
 	}
-	ImGui::Text("Tessellation Stuff");
-	
-
+	/*ImGui::Text("Tessellation Stuff");
 	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
 	ImGui::DragFloat("Tessellation Level", &tessLevels, 0.1f, 1, 100);
 	ImGui::DragFloat("Tessellation Alpha", &tessAlpha, 0.01f, 0, 1);
 	ImGui::Checkbox("Adaptive Tessellation", &adaptiveTesellation);
 	ImGui::Checkbox("Level of Detail", &LOD);
 	ImGui::DragFloat("LOD Distance", &LOD_distance, 0.1f, 1, 100);
-	ImGui::DragInt("LOD Power", &LOD_pow, 1, 1, 1000);
+	ImGui::DragInt("LOD Power", &LOD_pow, 1, 1, 1000);*/
+
 	ImGui::End();
 
 
@@ -241,10 +240,10 @@ void Renderer::render_initialize()
 	initImGUI();
 
 	//Load Shaders
-	std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
-		"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
+	//std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
+	//	"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
 
-	gBufferShader = Shader(tessellation);
+	gBufferShader = Shader("./resources/shaders/deferred.vert","./resources/shaders/deferred.frag" );
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
@@ -254,7 +253,7 @@ void Renderer::render_initialize()
 	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
-
+	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
 	
 	//tessellationShader = Shader(tessellation);
 
@@ -305,16 +304,16 @@ void Renderer::render_initialize()
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gLinearDepth, 0);
 
 	//Refinment depth buffer
-	glGenTextures(1, &refinementDepthBuffer);
-	glBindTexture(GL_TEXTURE_2D, refinementDepthBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, refinementDepthBuffer, 0);
+	//glGenTextures(1, &refinementDepthBuffer);
+	//glBindTexture(GL_TEXTURE_2D, refinementDepthBuffer);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, refinementDepthBuffer, 0);
 
 	//Tell attachments
-	unsigned int attachments[6] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,GL_COLOR_ATTACHMENT4,GL_COLOR_ATTACHMENT5 };
-	glDrawBuffers(6, attachments);
+	unsigned int attachments[6] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,GL_COLOR_ATTACHMENT4 };
+	glDrawBuffers(5, attachments);
 
 	//Depth buffer
 	glGenTextures(1, &gDepth);
@@ -471,6 +470,30 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	//Create Decal Buffer
+	glGenFramebuffers(1, &decalBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, decalBuffer);
+
+	//Normal buffer
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gNormal, 0);
+	//Albedo buffer
+	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gAlbedoSpec, 0);
+
+	unsigned int attachment6[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachment6);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	read_JSON("./data/scenes/sceneDecals.json");
 
 	objects.push_back(Object(new Model(models[0])));
@@ -515,21 +538,32 @@ void Renderer::render_update()
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 		gBufferShader.SetFloat("ambient", ambient);
-		gBufferShader.SetFloat("uTessLevels", tessLevels);
-		gBufferShader.SetBool("adaptiveTesellation", adaptiveTesellation);
-		gBufferShader.SetBool("LOD", LOD);
-		gBufferShader.SetFloat("LOD_distance", LOD_distance);
-		gBufferShader.SetInt("LOD_pow", LOD_pow);
-		gBufferShader.SetFloat("uTessAlpha", tessAlpha);
+		//gBufferShader.SetFloat("uTessLevels", tessLevels);
+		//gBufferShader.SetBool("adaptiveTesellation", adaptiveTesellation);
+		//gBufferShader.SetBool("LOD", LOD);
+		//gBufferShader.SetFloat("LOD_distance", LOD_distance);
+		//gBufferShader.SetInt("LOD_pow", LOD_pow);
+		//gBufferShader.SetFloat("uTessAlpha", tessAlpha);
 		//gBufferShader.SetVec3("camPos", vec3(glm::inverse(objects[0].model->transform.M2W) * vec4(m_cam.camPos,1)));
 		//std::cout << m_cam.camPos.x << std::endl;
 		for (auto & obj : objects)
-			obj.Draw(gBufferShader, true);
+			obj.Draw(gBufferShader, false);
 		/////////////////////////////////////////
 
 		//Decal Pass
-
-
+		glBindFramebuffer(GL_FRAMEBUFFER, decalBuffer);
+		//glCullFace(GL_BACK);
+		glCullFace(GL_FRONT);
+		glEnable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		decalShader.Use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, gDepth);
+		decalShader.SetMat4("projection", proj);
+		decalShader.SetMat4("view", m_cam.ViewMatrix);
+		decalShader.SetVec2("screenSize", vec2(width, height));
+		for (auto & dec : decals)
+			dec.Draw(decalShader,Decal::FULLDECAL);
 		/////////////////////////////////////////
 
 		//Lighting Pass
@@ -764,10 +798,7 @@ void Renderer::get_input()
 void Renderer::updateShaders()
 {
 	//Load Shaders
-	std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
-		"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
-
-	gBufferShader = Shader(tessellation);
+	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
 	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
@@ -777,6 +808,7 @@ void Renderer::updateShaders()
 	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
+	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
 }
 void Renderer::clear()
 {
