@@ -84,6 +84,7 @@ private:
 	float tessAlpha = 1.0f;
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
+	std::vector<Decal> decals;
 	unsigned int renderTexture;
 
 

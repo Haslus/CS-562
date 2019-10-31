@@ -471,15 +471,15 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	read_JSON("./data/scenes/tessellation.json");
+	read_JSON("./data/scenes/sceneDecals.json");
 
 	objects.push_back(Object(new Model(models[0])));
 
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,5,30),vec3(1,1,1),new Model(models[1]) });
-	scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,30,0),vec3(1,1,1),new Model(models[1]) });
+	//scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
 	renderTexture = blendTex;
 }
 
@@ -525,6 +525,11 @@ void Renderer::render_update()
 		//std::cout << m_cam.camPos.x << std::endl;
 		for (auto & obj : objects)
 			obj.Draw(gBufferShader, true);
+		/////////////////////////////////////////
+
+		//Decal Pass
+
+
 		/////////////////////////////////////////
 
 		//Lighting Pass
@@ -840,6 +845,36 @@ void Renderer::read_JSON(const std::string & path)
 		models.push_back(model);
 	}
 
+	json dec = j["decals"];
+	for (auto it : dec)
+	{
+		std::string diffuseTexture = it["diffuse"];
+		std::string normalTexture = it["normal"];
+
+		json t = it["translation"];
+		float t_x = t["x"];
+		float t_y = t["y"];
+		float t_z = t["z"];
+
+		json r = it["rotate"];
+		float r_x = r["x"];
+		float r_y = r["y"];
+		float r_z = r["z"];
+
+		json s = it["scale"];
+		float s_x = s["x"];
+		float s_y = s["y"];
+		float s_z = s["z"];
+
+		Model * cube = new Model(models[2]);
+		cube->transform.SetPosition({ t_x,t_y,t_z });
+		cube->transform.SetRotation({ r_x,r_y,r_z });
+		cube->transform.SetScale({ s_x,s_y,s_z });
+
+		Decal decal(diffuseTexture,normalTexture, cube);
+
+		decals.push_back(decal);
+	}
 
 }
 

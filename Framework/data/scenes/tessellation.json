@@ -1,0 +1,48 @@
+{
+    "objects": 
+    [
+        {
+            "mesh": "./data/meshes/suzanne.obj",
+            "translation": 
+            {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotate": 
+            {
+                "x": 0.0,
+                "y": 180.0,
+                "z": 0.0
+            },
+            "scale": 
+            {
+                "x": 10,
+                "y": 10,
+                "z": 10
+            }
+        },
+		{
+            "mesh": "./data/meshes/sphere.obj",
+            "translation": 
+            {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotate": 
+            {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": 
+            {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            }
+
+        }
+    ]
+}

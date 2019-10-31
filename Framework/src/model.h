@@ -87,7 +87,6 @@ public:
 
 private:
 	void SetupMesh();
-
 	unsigned int VAO, VBO, EBO;
 	
 };
@@ -114,4 +113,14 @@ private:
 	Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene);
 };
 
+class Decal
+{
+public:
+	Decal(const std::string & diffuse, const std::string & normal, Model * model);
+	void Draw();
+private:
+	Model * cube;
+	std::vector<Texture> textures;
+	
+};
 

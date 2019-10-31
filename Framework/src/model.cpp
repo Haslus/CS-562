@@ -399,3 +399,29 @@ bool TextureFromFile(const char * path,unsigned int & textureID)
 
 	return true;
 }
+
+Decal::Decal(const std::string & diffuse, const std::string & normal, Model * model)
+{
+	cube = model;
+	Texture diffTexture;
+	if (TextureFromFile(diffuse.c_str(), diffTexture.m_id))
+	{
+		diffTexture.m_type = "Diffuse";
+		diffTexture.m_path = diffuse.c_str();
+		textures.push_back(diffTexture);
+		textures_loaded.push_back(diffTexture);
+	}
+
+	Texture normalTexture;
+	if (TextureFromFile(normal.c_str(), normalTexture.m_id))
+	{
+		normalTexture.m_type = "NormalMap";
+		normalTexture.m_path = normal.c_str();
+		textures.push_back(normalTexture);
+		textures_loaded.push_back(normalTexture);
+	}
+}
+
+void Decal::Draw()
+{
+}
