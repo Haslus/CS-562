@@ -11,9 +11,9 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform int drawMode = 1;
+uniform int drawMode = 0;
 
-uniform float angleLimit = 30;
+uniform float angleLimit = 0.8;
 
 layout(binding = 0) uniform sampler2D depthTex;
 layout(binding = 1) uniform sampler2D diffuseTex;
@@ -43,8 +43,10 @@ void main()
 		discard;
 	if(modelPos.y < -0.5 || modelPos.y > 0.5)
 		discard;
+	if(modelPos.z < -0.5 || modelPos.z > 0.5)
+		discard;
 
-	if(drawMode == 0)
+	if(drawMode == 1)
 	{
 		gNormal = texture(normalTex, texCoords);
 		gAlbedoSpec = vec4(1,1,1,1);
@@ -54,44 +56,45 @@ void main()
 		//Use model coordinate as texture coordinate
 		vec2 decTexCoords = modelPos.xy + vec2(0.5);
 
-		//Check if normal is valid respect to the angle
-		vec3 givenNormal = texture(normalTex, decTexCoords).xyz;
-
-		vec3 front = vec3(0,0,-1);
-
-		front = transpose(inverse(mat3(view * model))) * front;
-
-		float angle = dot(front,givenNormal);
-
-		if(angle > angleLimit)
-			discard;
-
 		//Sample textures
 		vec4 diffuseSample = texture(diffuseTex, decTexCoords);
 
 		if(diffuseSample.a < 0.5)
 			discard;
-	
-	
+
+		//Check if normal is valid respect to the angle
+		vec3 givenNormal = texture(normalTex, decTexCoords).xyz;
+
+		vec3 front = vec3(0,0,-1);
+
+		front = normalize(transpose(inverse(mat3(model))) * front);
+
 		//Normal needs to be on tangent space
-		vec3 dxWp = dFdx(worldPos).xyz;
-		vec3 dyWp = dFdy(worldPos).xyz;
+		vec3 dxWp = dFdx(worldPos.xyz);
+		vec3 dyWp = dFdy(worldPos.xyz);
 	
-		vec3 normal = normalize(cross(dxWp,dyWp));
-		vec3 tangent = normalize(dyWp);
-		vec3 bitangent = normalize(dxWp);
+		vec3 tangent = normalize(dxWp);
+		vec3 bitangent = normalize(dyWp);
+
+		vec3 normal = normalize(cross(tangent,bitangent));
+
+		float angle = dot(front,normal);
+
+		if(angle < angleLimit)
+			discard;
+
 	
-		vec3 T =  normalize(vec3(model * vec4(tangent,  0.0)));
-		vec3 B = -normalize(vec3(model * vec4(bitangent,0.0)));
-		vec3 N =  normalize(vec3(model * vec4(normal,   0.0)));
+		vec3 T = -normalize(vec3(tangent));
+		vec3 B =  normalize(vec3(bitangent));
+		vec3 N =  normalize(vec3(normal));
 		mat3 TBN = mat3(T, B, N);
 	
-		//vec3 finalNormal = normalize(TBN * front);
+		vec3 finalNormal = normalize(TBN * ( 2.0 * givenNormal - 1));
 		//givenNormal = normalize(TBN * givenNormal);
 
 		
 
-		gNormal = vec4(givenNormal,1);
+		gNormal = vec4(finalNormal,1);
 		gAlbedoSpec = vec4(diffuseSample);
 	}
 	
