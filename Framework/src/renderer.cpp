@@ -169,7 +169,7 @@ void Renderer::renderImGUI()
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 1);
 		ImGui::InputFloat("Radius ", &scene_lights[light_index].radius);
-		ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
+		//ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
 		if(ImGui::Button("Pause Movement"))
 		{
 			for (auto & it : scene_lights)
@@ -183,6 +183,14 @@ void Renderer::renderImGUI()
 		}
 
 	}
+	const char * items[] = {"Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume"};
+
+	//const char* items[] = { "AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIII", "JJJJ", "KKKK", "LLLLLLL", "MMMM", "OOOOOOO" };
+	//static int item_current = 0;
+	ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
+	ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
+	//ImGui::ListBox("Draw Mode for Decals", &drawMode, &items, 3);
+
 	/*ImGui::Text("Tessellation Stuff");
 	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
 	ImGui::DragFloat("Tessellation Level", &tessLevels, 0.1f, 1, 100);
@@ -490,18 +498,33 @@ void Renderer::render_initialize()
 	unsigned int attachment6[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(2, attachment6);
 
+	glBindTexture(GL_TEXTURE_2D, gDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gDepth, 0);
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	read_JSON("./data/scenes/sceneDecals.json");
+	
+	read_JSON("./data/scenes/models.json");
+	read_JSON_Scene("./data/scenes/sceneDecals.json");
 
-	objects.push_back(Object(new Model(models[0])));
+
+	//objects.push_back(Object(new Model(models[0])));
 
 
 
 	//Create light
-	scene_lights.push_back(Light{ vec3(0,30,0),vec3(1,1,1),new Model(models[1]) });
+	scene_lights.push_back(Light{ vec3(0,15,0),vec3(1,1,1),new Model(models[0]),150 });
+
+	scene_lights.push_back(Light{ vec3(-40,20,40),vec3(0,0,1),new Model(models[0]),150 });
+
+	scene_lights.push_back(Light{ vec3(40,30,-40),vec3(0,1,0),new Model(models[0]),150 });
+
+	scene_lights.push_back(Light{ vec3(75,30,0),vec3(1,0,0),new Model(models[0]),150 });
 	//scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
 	renderTexture = blendTex;
 }
@@ -538,13 +561,6 @@ void Renderer::render_update()
 		gBufferShader.SetMat4("projection", proj);
 		gBufferShader.SetMat4("view", m_cam.ViewMatrix);
 		gBufferShader.SetFloat("ambient", ambient);
-		//gBufferShader.SetFloat("uTessLevels", tessLevels);
-		//gBufferShader.SetBool("adaptiveTesellation", adaptiveTesellation);
-		//gBufferShader.SetBool("LOD", LOD);
-		//gBufferShader.SetFloat("LOD_distance", LOD_distance);
-		//gBufferShader.SetInt("LOD_pow", LOD_pow);
-		//gBufferShader.SetFloat("uTessAlpha", tessAlpha);
-		//gBufferShader.SetVec3("camPos", vec3(glm::inverse(objects[0].model->transform.M2W) * vec4(m_cam.camPos,1)));
 		//std::cout << m_cam.camPos.x << std::endl;
 		for (auto & obj : objects)
 			obj.Draw(gBufferShader, false);
@@ -562,8 +578,9 @@ void Renderer::render_update()
 		decalShader.SetMat4("projection", proj);
 		decalShader.SetMat4("view", m_cam.ViewMatrix);
 		decalShader.SetVec2("screenSize", vec2(width, height));
+		decalShader.SetFloat("angleLimit", angleLimit);
 		for (auto & dec : decals)
-			dec.Draw(decalShader,Decal::FULLDECAL);
+			dec.Draw(decalShader,static_cast<Decal::DrawMode>(drawMode));
 		/////////////////////////////////////////
 
 		//Lighting Pass
@@ -651,7 +668,7 @@ void Renderer::render_update()
 		renderQuad();
 		///////////////////////////////////////
 
-		//Set Depth to that lights can be drawn
+		//Set Depth so that lights can be drawn
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderBuffer);
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
@@ -683,7 +700,7 @@ void Renderer::render_update()
 
 		//Gaussian Blur
 		bool horizontal = true, first_it = true;
-		int amount = 10;
+		int amount = 20;
 		gaussianblurShader.Use();
 		for (int i = 0; i < amount; i++)
 		{
@@ -704,7 +721,7 @@ void Renderer::render_update()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		blendShader.Use();
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, blurTex);
+		glBindTexture(GL_TEXTURE_2D, renderTex);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, finalpingpongTex);
 		renderQuad();
@@ -841,7 +858,7 @@ void Renderer::clear()
 
 }
 /**
-* @brief 	Read the JSON file and build the scene
+* @brief 	Read the myJSON file and build the scene
 */
 void Renderer::read_JSON(const std::string & path)
 {
@@ -877,6 +894,44 @@ void Renderer::read_JSON(const std::string & path)
 		models.push_back(model);
 	}
 
+}
+/**
+* @brief 	Read the JSON file and build the scene
+*/
+void Renderer::read_JSON_Scene(const std::string & path)
+{
+	std::ifstream i(path);
+	json j = json::parse(i);
+
+	json obj = j["objects"];
+
+	for (auto it : obj)
+	{
+		std::string mesh = it["mesh"];
+
+		json t = it["translation"];
+		float t_x = t["x"];
+		float t_y = t["y"];
+		float t_z = t["z"];
+
+		json r = it["rotate"];
+		float r_x = r["x"];
+		float r_y = r["y"];
+		float r_z = r["z"];
+
+		json s = it["scale"];
+		float s_x = s["x"];
+		float s_y = s["y"];
+		float s_z = s["z"];
+
+		Model * model = new Model(mesh);
+		model->transform.SetPosition({ t_x,t_y,t_z });
+		model->transform.SetRotation({ r_x,r_y,r_z });
+		model->transform.SetScale({ s_x,s_y,s_z });
+
+		objects.push_back(Object(model));
+	}
+
 	json dec = j["decals"];
 	for (auto it : dec)
 	{
@@ -898,7 +953,7 @@ void Renderer::read_JSON(const std::string & path)
 		float s_y = s["y"];
 		float s_z = s["z"];
 
-		Model * cube = new Model(models[2]);
+		Model * cube = new Model(models[1]);
 		cube->transform.SetPosition({ t_x,t_y,t_z });
 		cube->transform.SetRotation({ r_x,r_y,r_z });
 		cube->transform.SetScale({ s_x,s_y,s_z });

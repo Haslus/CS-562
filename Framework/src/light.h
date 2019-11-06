@@ -21,8 +21,8 @@ struct Light
 		this->model = model;
 	};
 
-	Light(vec3 pos, vec3 col, Model * model) : color(col) ,model(model){
-		radius = 125;
+	Light(vec3 pos, vec3 col, Model * model, float Radius = 100) : color(col) ,model(model){
+		radius = Radius;
 		model->transform.SetPosition(pos);
 	};
 

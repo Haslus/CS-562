@@ -56,7 +56,7 @@ public:
 	void RecalculateViewMatrix();
 
 	glm::mat4x4 ViewMatrix;
-	vec3 camPos = vec3(0, 15, 40);
+	vec3 camPos = vec3(0, 15, 20);
 	vec3 camFront = vec3(0, 0, -1);
 	vec3 camUp = vec3(0, 1, 0);
 

@@ -37,22 +37,19 @@ void main()
 	viewPos /= viewPos.w;
 	vec4 worldPos = inverse(view) * viewPos;
 	vec4 modelPos = inverse(model) * worldPos;
-	
-	//Check if it is inside the box, discard otherwise
-	if(modelPos.x < -0.5 || modelPos.x > 0.5)
-		discard;
-	if(modelPos.y < -0.5 || modelPos.y > 0.5)
-		discard;
-	if(modelPos.z < -0.5 || modelPos.z > 0.5)
-		discard;
 
-	if(drawMode == 1)
+
+	if(drawMode == 0)
 	{
-		gNormal = texture(normalTex, texCoords);
-		gAlbedoSpec = vec4(1,1,1,1);
-	}
-	else
-	{
+
+		//Check if it is inside the box, discard otherwise
+		if(modelPos.x < -0.5 || modelPos.x > 0.5)
+			discard;
+		if(modelPos.y < -0.5 || modelPos.y > 0.5)
+			discard;
+		if(modelPos.z < -0.5 || modelPos.z > 0.5)
+			discard;
+
 		//Use model coordinate as texture coordinate
 		vec2 decTexCoords = modelPos.xy + vec2(0.5);
 
@@ -90,15 +87,30 @@ void main()
 		mat3 TBN = mat3(T, B, N);
 	
 		vec3 finalNormal = normalize(TBN * ( 2.0 * givenNormal - 1));
-		//givenNormal = normalize(TBN * givenNormal);
 
 		
 
 		gNormal = vec4(finalNormal,1);
 		gAlbedoSpec = vec4(diffuseSample);
 	}
-	
-	
+	else if(drawMode == 2)
+	{
+		gNormal = vec4(1,0,0,1);
+		gAlbedoSpec = vec4(1,1,1,1);
+	}
+	else
+	{
+		//Check if it is inside the box, discard otherwise
+		if(modelPos.x < -0.5 || modelPos.x > 0.5)
+			discard;
+		if(modelPos.y < -0.5 || modelPos.y > 0.5)
+			discard;
+		if(modelPos.z < -0.5 || modelPos.z > 0.5)
+			discard;
+
+		gNormal = vec4(1,0,0,1);
+		gAlbedoSpec = vec4(1,1,1,1);
+	}
    
 
 }

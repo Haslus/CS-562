@@ -428,6 +428,7 @@ void Decal::Draw(Shader shader, DrawMode drawMode)
 	glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, textures[1].m_id);
+	shader.SetInt("drawMode", drawMode);
 	switch (drawMode)
 	{
 	case Decal::FULLDECAL:
@@ -437,12 +438,20 @@ void Decal::Draw(Shader shader, DrawMode drawMode)
 	}
 	case Decal::ONLYPIXELS:
 	{
-
+		cube->Draw(shader);
 		break;
 	}
 	case Decal::SHADING:
 	{
-
+		glCullFace(GL_BACK);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LESS);
+		glEnable(GL_BLEND);
+		glBlendFuncSeparate(GL_ONE,GL_ZERO,GL_ZERO,GL_ONE);
+		cube->Draw(shader);
+		glDisable(GL_BLEND);
 		break;
 	}
 	default:

@@ -35,8 +35,8 @@ private:
 	void get_input();
 	void updateShaders();
 	void clear();
-
 	void read_JSON(const std::string& path);
+	void read_JSON_Scene(const std::string& path);
 
 	Shader shader;
 	Shader renderShader;
@@ -87,6 +87,8 @@ private:
 	std::vector<Object> objects;
 	std::vector<Decal> decals;
 	unsigned int renderTexture;
+	int drawMode = 0;
+	float angleLimit = 0.8;
 
 
 public:
