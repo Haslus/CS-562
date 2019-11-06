@@ -115,7 +115,7 @@ void Renderer::renderImGUI()
 	ImGui::Text("Edge Detection");
 	if(ImGui::ImageButton((void*)(intptr_t)EDTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = EDTex;
-	ImGui::Text("Anti Aliasing (Not Light Model)");
+	ImGui::Text("Anti Aliasing");
 	if(ImGui::ImageButton((void*)(intptr_t)blurTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blurTex;
 	ImGui::Text("Final Result No Post-Processing");
@@ -389,6 +389,15 @@ void Renderer::render_initialize()
 	unsigned int attachment2 = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, &attachment2);
 
+	//Depth buffer
+	unsigned int blurDepth;
+	glGenTextures(1, &blurDepth);
+	glBindTexture(GL_TEXTURE_2D, blurDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, blurDepth, 0);
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -520,11 +529,11 @@ void Renderer::render_initialize()
 	//Create light
 	scene_lights.push_back(Light{ vec3(0,15,0),vec3(1,1,1),new Model(models[0]),150 });
 
-	scene_lights.push_back(Light{ vec3(-40,20,40),vec3(0,0,1),new Model(models[0]),150 });
+	scene_lights.push_back(Light{ vec3(-90,20,40),vec3(1,1,1),new Model(models[0]),150 });
 
-	scene_lights.push_back(Light{ vec3(40,30,-40),vec3(0,1,0),new Model(models[0]),150 });
+	scene_lights.push_back(Light{ vec3(40,30,-40),vec3(1,1,1),new Model(models[0]),150 });
 
-	scene_lights.push_back(Light{ vec3(75,30,0),vec3(1,0,0),new Model(models[0]),150 });
+	scene_lights.push_back(Light{ vec3(75,30,0),vec3(1,1,1),new Model(models[0]),150 });
 	//scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
 	renderTexture = blendTex;
 }
@@ -686,6 +695,26 @@ void Renderer::render_update()
 			scene_lights[i].model->transform.SetScale(glm::vec3(1));
 			scene_lights[i].model->Draw(renderShader);
 		}
+
+		//Also add lights to the blurTex
+		//Render Lights
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, blurBuffer);
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		glBindFramebuffer(GL_FRAMEBUFFER, blurBuffer);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		renderShader.Use();
+		renderShader.SetMat4("projection", proj);
+		renderShader.SetMat4("view", m_cam.ViewMatrix);
+		for (unsigned int i = 0; i < scene_lights.size(); i++)
+		{
+			renderShader.SetVec3("color", scene_lights[i].color);
+			scene_lights[i].model->transform.SetScale(glm::vec3(1));
+			scene_lights[i].model->Draw(renderShader);
+		}
+
+
 		/////////////////////////////////////////
 
 		//Bloom
@@ -721,7 +750,7 @@ void Renderer::render_update()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		blendShader.Use();
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, renderTex);
+		glBindTexture(GL_TEXTURE_2D, blurTex);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, finalpingpongTex);
 		renderQuad();

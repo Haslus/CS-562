@@ -88,7 +88,7 @@ private:
 	std::vector<Decal> decals;
 	unsigned int renderTexture;
 	int drawMode = 0;
-	float angleLimit = 0.8;
+	float angleLimit = 0.8f;
 
 
 public:

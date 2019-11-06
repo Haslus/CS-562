@@ -81,12 +81,12 @@ void main()
 			discard;
 
 	
-		vec3 T = -normalize(vec3(tangent));
+		vec3 T =  -normalize(vec3(tangent));
 		vec3 B =  normalize(vec3(bitangent));
 		vec3 N =  normalize(vec3(normal));
 		mat3 TBN = mat3(T, B, N);
 	
-		vec3 finalNormal = normalize(TBN * ( 2.0 * givenNormal - 1));
+		vec3 finalNormal = normalize(TBN * ( 2.0 * givenNormal - 1.0));
 
 		
 
