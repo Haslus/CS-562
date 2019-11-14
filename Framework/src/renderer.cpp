@@ -130,9 +130,6 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
-	/*ImGui::Text("Refinement Depth");
-	if (ImGui::ImageButton((void*)(intptr_t)refinementDepthBuffer, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
-		renderTexture = refinementDepthBuffer;*/
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -169,7 +166,6 @@ void Renderer::renderImGUI()
 		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
 		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 1);
 		ImGui::InputFloat("Radius ", &scene_lights[light_index].radius);
-		//ImGui::DragFloat("Global Ambient", &ambient, 0.01f, 0.0f, 1.0f);
 		if(ImGui::Button("Pause Movement"))
 		{
 			for (auto & it : scene_lights)
@@ -184,21 +180,10 @@ void Renderer::renderImGUI()
 
 	}
 	const char * items[] = {"Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume"};
-
-	//const char* items[] = { "AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIII", "JJJJ", "KKKK", "LLLLLLL", "MMMM", "OOOOOOO" };
-	//static int item_current = 0;
+;
 	ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
 	ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
-	//ImGui::ListBox("Draw Mode for Decals", &drawMode, &items, 3);
 
-	/*ImGui::Text("Tessellation Stuff");
-	ImGui::Checkbox("Wireframe", &objects[0].model->wireframe);
-	ImGui::DragFloat("Tessellation Level", &tessLevels, 0.1f, 1, 100);
-	ImGui::DragFloat("Tessellation Alpha", &tessAlpha, 0.01f, 0, 1);
-	ImGui::Checkbox("Adaptive Tessellation", &adaptiveTesellation);
-	ImGui::Checkbox("Level of Detail", &LOD);
-	ImGui::DragFloat("LOD Distance", &LOD_distance, 0.1f, 1, 100);
-	ImGui::DragInt("LOD Power", &LOD_pow, 1, 1, 1000);*/
 
 	ImGui::End();
 
@@ -262,7 +247,7 @@ void Renderer::render_initialize()
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
-	
+	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
 	//tessellationShader = Shader(tessellation);
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
@@ -592,6 +577,14 @@ void Renderer::render_update()
 			dec.Draw(decalShader,static_cast<Decal::DrawMode>(drawMode));
 		/////////////////////////////////////////
 
+		//Horizon Based Ambient Occlusion
+
+
+
+
+		////////////////////////////////////////
+
+
 		//Lighting Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 		//Blending
@@ -855,6 +848,7 @@ void Renderer::updateShaders()
 	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
+	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
 }
 void Renderer::clear()
 {
