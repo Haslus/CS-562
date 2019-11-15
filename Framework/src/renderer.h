@@ -53,7 +53,7 @@ private:
 
 	std::vector<Model> models;
 
-	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer, decalBuffer;
+	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer, decalBuffer, AOBuffer;
 	unsigned int pingpongBuffer[2];
 	Shader gBufferShader;
 	Shader lightingPassShader;
@@ -76,6 +76,7 @@ private:
 	unsigned int pingpongTex[2];
 	unsigned int finalpingpongTex;
 	unsigned int blendTex;
+	unsigned int AOTex;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
 	/*float tessLevels = 1.0;

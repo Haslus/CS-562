@@ -130,6 +130,9 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
+	ImGui::Text("Ambient Occlusion");
+	if (ImGui::ImageButton((void*)(intptr_t)AOTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = AOTex;
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -502,6 +505,26 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	//Create Ambient Occlusion Buffer
+	glGenFramebuffers(1, &AOBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, AOBuffer);
+
+	//Albedo buffer
+	glGenTextures(1, &AOTex);
+	glBindTexture(GL_TEXTURE_2D, AOTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, AOTex, 0);
+
+	unsigned int attachment7 = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, &attachment7);
+
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	
 	read_JSON("./data/scenes/models.json");
 	read_JSON_Scene("./data/scenes/sceneDecals.json");
@@ -579,7 +602,24 @@ void Renderer::render_update()
 
 		//Horizon Based Ambient Occlusion
 
+		glBindFramebuffer(GL_FRAMEBUFFER, AOBuffer);
 
+		glClear(GL_COLOR_BUFFER_BIT);
+		glCullFace(GL_BACK);
+		glDisable(GL_DEPTH_TEST);
+
+		HBAOShader.Use();
+		HBAOShader.SetMat4("projection", proj);
+		HBAOShader.SetMat4("view", m_cam.ViewMatrix);
+		HBAOShader.SetVec2("screenSize", vec2(width, height));
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, gLinearDepth);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, gNormal);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, gPosition);
+		renderQuad();
 
 
 		////////////////////////////////////////
