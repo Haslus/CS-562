@@ -24,7 +24,7 @@ using json = nlohmann::json;
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <glm/gtc/random.hpp>
 
 
 int width;
@@ -130,9 +130,15 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom");
 	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
+	ImGui::Text("Random Texture");
+	if (ImGui::ImageButton((void*)(intptr_t)randomTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = randomTex;
 	ImGui::Text("Ambient Occlusion");
 	if (ImGui::ImageButton((void*)(intptr_t)AOTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = AOTex;
+	ImGui::Text("Ambient Occlusion with Bilateral Filtering");
+	if (ImGui::ImageButton((void*)(intptr_t)BFAOTex,			 ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = finalpingpongTex_2;
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -182,10 +188,31 @@ void Renderer::renderImGUI()
 		}
 
 	}
-	const char * items[] = {"Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume"};
-;
-	ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
-	ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
+
+	if(ImGui::TreeNode("Decals"))
+	{
+		const char * items[] = { "Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume" };
+		;
+		ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
+		ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
+
+		ImGui::TreePop();
+	}
+	
+	if (ImGui::TreeNode("Horizon Based Ambient Occlusion"))
+	{
+		ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 500);
+		ImGui::DragFloat("Angles Bias", &angleBias, 0.01f, 0.0f, 360.0f);
+		ImGui::InputInt("Number of Directions", &numDirections);
+		ImGui::InputInt("Number of Steps", &numSteps);
+		ImGui::DragFloat("Attenuation Factor", &attenuation,0.1f,0,10);
+		ImGui::DragFloat("Scale Factor", &scale, 0.1f,0.1f,100);
+
+		ImGui::DragFloat("Sigma R", &sigma_R, 0.1f, 0.1f, 100);
+		ImGui::DragFloat("Sigma S", &sigma_S, 0.1f, 0.1f, 100);
+
+		ImGui::TreePop();
+	}
 
 
 	ImGui::End();
@@ -251,6 +278,7 @@ void Renderer::render_initialize()
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
 	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
+	BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
 	//tessellationShader = Shader(tessellation);
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
@@ -434,7 +462,6 @@ void Renderer::render_initialize()
 
 	//Create Gaussian Blur Buffer
 	glGenFramebuffers(2, pingpongBuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, bloomBuffer);
 	glGenTextures(2, pingpongTex);
 
 	for (unsigned int i = 0; i < 2; i++)
@@ -525,6 +552,51 @@ void Renderer::render_initialize()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	//Create Bilateral Filtering Buffer
+	glGenFramebuffers(2, BFBuffer);
+	glGenTextures(2, BFAOTex);
+
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[i]);
+		glBindTexture(GL_TEXTURE_2D, BFAOTex[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, BFAOTex[i], 0
+		);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	
+
+	//Generate random texture
+	glGenTextures(1, &randomTex);
+	glBindTexture(GL_TEXTURE_2D, randomTex);
+
+	std::vector<glm::vec3> colorData;
+	for (int i = 0; i < width * height; i++)
+	{
+		glm::vec3 color;
+		color.r = glm::linearRand(0.0f, 1.0f);
+		color.g = glm::linearRand(0.0f, 1.0f);
+		color.b = glm::linearRand(0.0f, 1.0f);
+		colorData.push_back(color);
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, colorData.data());
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+
 	
 	read_JSON("./data/scenes/models.json");
 	read_JSON_Scene("./data/scenes/sceneDecals.json");
@@ -611,7 +683,14 @@ void Renderer::render_update()
 		HBAOShader.Use();
 		HBAOShader.SetMat4("projection", proj);
 		HBAOShader.SetMat4("view", m_cam.ViewMatrix);
-		HBAOShader.SetVec2("screenSize", vec2(width, height));
+		HBAOShader.SetVec2("ScreenSize", vec2(width, height));
+
+		HBAOShader.SetFloat("radius",radius);
+		HBAOShader.SetFloat("angleBias",angleBias);
+		HBAOShader.SetInt("numDirections",numDirections);
+		HBAOShader.SetInt("numSteps",numSteps);
+		HBAOShader.SetFloat("attenuation",attenuation);
+		HBAOShader.SetFloat("scale",scale);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gLinearDepth);
@@ -621,6 +700,25 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D, gPosition);
 		renderQuad();
 
+		//Bilateral Filtering
+
+		bool horizontal = true, first_it = true;
+		int amount = 10;
+		BFShader.Use();
+		BFShader.SetFloat("sigma_S", sigma_S);
+		BFShader.SetFloat("sigma_R", sigma_R);
+		for (int i = 0; i < amount; i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
+			BFShader.SetInt("horizontal", horizontal);
+			glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
+			renderQuad();
+			horizontal = !horizontal;
+			if (first_it)
+				first_it = false;
+		}
+		finalpingpongTex_2 = BFAOTex[!horizontal];
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		////////////////////////////////////////
 
@@ -761,21 +859,23 @@ void Renderer::render_update()
 		//////////////////////////////////////////
 
 		//Gaussian Blur
-		bool horizontal = true, first_it = true;
-		int amount = 20;
-		gaussianblurShader.Use();
-		for (int i = 0; i < amount; i++)
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[horizontal]);
-			gaussianblurShader.SetInt("horizontal", horizontal);
-			glBindTexture(GL_TEXTURE_2D, first_it ? bloomTex : pingpongTex[!horizontal]);
-			renderQuad();
-			horizontal = !horizontal;
-			if (first_it)
-				first_it = false;
+			bool horizontal = true, first_it = true;
+			int amount = 20;
+			gaussianblurShader.Use();
+			for (int i = 0; i < amount; i++)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[horizontal]);
+				gaussianblurShader.SetInt("horizontal", horizontal);
+				glBindTexture(GL_TEXTURE_2D, first_it ? bloomTex : pingpongTex[!horizontal]);
+				renderQuad();
+				horizontal = !horizontal;
+				if (first_it)
+					first_it = false;
+			}
+			finalpingpongTex = pingpongTex[!horizontal];
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
-		finalpingpongTex = pingpongTex[!horizontal];
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		/////////////////////////////////////////
 
 		//Blend Gaussian Blur and Scene

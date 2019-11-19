@@ -53,7 +53,7 @@ private:
 
 	std::vector<Model> models;
 
-	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer, decalBuffer, AOBuffer;
+	unsigned int gBuffer, lightBuffer, EDBuffer, blurBuffer, ambientBuffer,renderBuffer, bloomBuffer, blendBuffer, refinementDepthBuffer, decalBuffer, AOBuffer, BFBuffer[2];
 	unsigned int pingpongBuffer[2];
 	Shader gBufferShader;
 	Shader lightingPassShader;
@@ -66,6 +66,7 @@ private:
 	Shader tessellationShader;
 	Shader decalShader;
 	Shader HBAOShader;
+	Shader BFShader;
 	unsigned int gPosition, gNormal, gAlbedoSpec, gDepth, gLinearDepth;
 	unsigned int lightTex;
 	unsigned int EDTex;
@@ -77,6 +78,10 @@ private:
 	unsigned int finalpingpongTex;
 	unsigned int blendTex;
 	unsigned int AOTex;
+	unsigned int randomTex;
+	unsigned int BFAOTex[2];
+	unsigned int pingpongTex_2[2];
+	unsigned int finalpingpongTex_2;
 	std::vector<Light> scene_lights;
 	float ambient = 0;
 	/*float tessLevels = 1.0;
@@ -91,6 +96,17 @@ private:
 	unsigned int renderTexture;
 	int drawMode = 0;
 	float angleLimit = 0.8f;
+
+	//HBAO
+	float radius = 30;
+	float angleBias = 0;
+	int numDirections = 4;
+	int numSteps = 10;
+	float attenuation = 1;
+	float scale = 1;
+
+	float sigma_S = 1;
+	float sigma_R = 1;
 
 
 public:
