@@ -698,6 +698,8 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D, gNormal);
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, randomTex);
 		renderQuad();
 
 		//Bilateral Filtering

@@ -37,7 +37,7 @@ void main()
 			{
 				vec3 I_q = texture(image, next_TC[j]).rgb;
 				float G_s = calculate_kernel(sigma_S,length(TexCoords - next_TC[j]));
-				float G_r = calculate_kernel(sigma_R,length(abs(I_p - I_q)));
+				float G_r = calculate_kernel(sigma_R,length(I_p - I_q));
 
 				BF_total += G_s * G_r * I_q;
 				WP_total += G_s * G_r;
