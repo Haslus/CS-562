@@ -8,22 +8,22 @@ in vec2 TexCoords;
 
 layout(binding = 0) uniform sampler2D image;
 
-uniform bool horizontal;
+uniform bool horizontal = false;
 
-uniform float sigma_S = 1;
-uniform float sigma_R = 1;
+uniform float sigma_S = 6;
+uniform float sigma_R = 0.25;
 
 float calculate_kernel(float sigma, float value)
 {
-	return 1.0f / (2 * PI * sigma * sigma) *  exp( -(value * value) / (2 * sigma * sigma));
+	return (1.0f / float (2.0f * PI * sigma * sigma)) *  exp( -(value * value) / (2.0f * sigma * sigma));
 }
 
 void main()
 {   
 	vec2 tex_offset = 1.0 / textureSize(image,0);
-	vec3 I_p = texture(image, TexCoords).rgb * calculate_kernel(sigma_S, 0);
+	float I_p = texture(image, TexCoords).r * calculate_kernel(sigma_S, 0);
 
-	vec3 BF_total = vec3(0);
+	float BF_total = 0;
 	float WP_total = 0;
 
 	if(horizontal)
@@ -35,15 +35,16 @@ void main()
 
 			for(int j = 0; j < 2; j++)
 			{
-				vec3 I_q = texture(image, next_TC[j]).rgb;
+				float I_q = texture(image, next_TC[j]).r;
 				float G_s = calculate_kernel(sigma_S,length(TexCoords - next_TC[j]));
-				float G_r = calculate_kernel(sigma_R,length(I_p - I_q));
+				float G_r = calculate_kernel(sigma_R, abs(I_p - I_q));
 
 				BF_total += G_s * G_r * I_q;
 				WP_total += G_s * G_r;
 			}
 		}
 	}
+
 	else
 	{
 		for( int i = 1; i < 5; i++)
@@ -53,9 +54,9 @@ void main()
 
 			for(int j = 0; j < 2; j++)
 			{
-				vec3 I_q = texture(image, next_TC[j]).rgb;
+				float I_q = texture(image, next_TC[j]).r;
 				float G_s = calculate_kernel(sigma_S,length(TexCoords - next_TC[j]));
-				float G_r = calculate_kernel(sigma_R,length(abs(I_p - I_q)));
+				float G_r = calculate_kernel(sigma_R, abs(I_p - I_q));
 
 				BF_total += G_s * G_r * I_q;
 				WP_total += G_s * G_r;
@@ -66,8 +67,11 @@ void main()
 		}
 	}
 
-
 	BF_total /= WP_total;
 
-	FragColor = vec4(BF_total,1.0);
+	FragColor = vec4(BF_total,BF_total,BF_total,1.0);
+	
+
+
+	
 }

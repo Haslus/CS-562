@@ -137,7 +137,7 @@ void Renderer::renderImGUI()
 	if (ImGui::ImageButton((void*)(intptr_t)AOTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = AOTex;
 	ImGui::Text("Ambient Occlusion with Bilateral Filtering");
-	if (ImGui::ImageButton((void*)(intptr_t)BFAOTex,			 ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+	if (ImGui::ImageButton((void*)(intptr_t)finalpingpongTex_2,			 ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = finalpingpongTex_2;
 	ImGui::End();
 
@@ -210,7 +210,7 @@ void Renderer::renderImGUI()
 
 		ImGui::DragFloat("Sigma R", &sigma_R, 0.1f, 0.1f, 100);
 		ImGui::DragFloat("Sigma S", &sigma_S, 0.1f, 0.1f, 100);
-
+		ImGui::Checkbox("use Bilaterial Filter (If FALSE use Gaussian Blur)", &bilateralFilter);
 		ImGui::TreePop();
 	}
 
@@ -626,7 +626,7 @@ void Renderer::render_update()
 	
 	while (!glfwWindowShouldClose(window))
 	{
-		
+
 		float currentFrame = static_cast<float>(glfwGetTime());
 		dt = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -654,22 +654,25 @@ void Renderer::render_update()
 		for (auto & obj : objects)
 			obj.Draw(gBufferShader, false);
 		/////////////////////////////////////////
-
-		//Decal Pass
-		glBindFramebuffer(GL_FRAMEBUFFER, decalBuffer);
-		//glCullFace(GL_BACK);
-		glCullFace(GL_FRONT);
-		glEnable(GL_CULL_FACE);
-		glDisable(GL_DEPTH_TEST);
-		decalShader.Use();
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, gDepth);
-		decalShader.SetMat4("projection", proj);
-		decalShader.SetMat4("view", m_cam.ViewMatrix);
-		decalShader.SetVec2("screenSize", vec2(width, height));
-		decalShader.SetFloat("angleLimit", angleLimit);
-		for (auto & dec : decals)
-			dec.Draw(decalShader,static_cast<Decal::DrawMode>(drawMode));
+		if (drawDecals)
+		{
+			//Decal Pass
+			glBindFramebuffer(GL_FRAMEBUFFER, decalBuffer);
+			//glCullFace(GL_BACK);
+			glCullFace(GL_FRONT);
+			glEnable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
+			decalShader.Use();
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, gDepth);
+			decalShader.SetMat4("projection", proj);
+			decalShader.SetMat4("view", m_cam.ViewMatrix);
+			decalShader.SetVec2("screenSize", vec2(width, height));
+			decalShader.SetFloat("angleLimit", angleLimit);
+			for (auto & dec : decals)
+				dec.Draw(decalShader, static_cast<Decal::DrawMode>(drawMode));
+		}
+		
 		/////////////////////////////////////////
 
 		//Horizon Based Ambient Occlusion
@@ -685,42 +688,66 @@ void Renderer::render_update()
 		HBAOShader.SetMat4("view", m_cam.ViewMatrix);
 		HBAOShader.SetVec2("ScreenSize", vec2(width, height));
 
-		HBAOShader.SetFloat("radius",radius);
-		HBAOShader.SetFloat("angleBias",angleBias);
-		HBAOShader.SetInt("numDirections",numDirections);
-		HBAOShader.SetInt("numSteps",numSteps);
-		HBAOShader.SetFloat("attenuation",attenuation);
-		HBAOShader.SetFloat("scale",scale);
+		HBAOShader.SetFloat("radius", radius);
+		HBAOShader.SetFloat("angleBias", angleBias);
+		HBAOShader.SetInt("numDirections", numDirections);
+		HBAOShader.SetInt("numSteps", numSteps);
+		HBAOShader.SetFloat("attenuation", attenuation);
+		HBAOShader.SetFloat("scale", scale);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, gLinearDepth);
-		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, gNormal);
-		glActiveTexture(GL_TEXTURE2);
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, gPosition);
-		glActiveTexture(GL_TEXTURE3);
+		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, randomTex);
 		renderQuad();
 
-		//Bilateral Filtering
 
-		bool horizontal = true, first_it = true;
-		int amount = 10;
-		BFShader.Use();
-		BFShader.SetFloat("sigma_S", sigma_S);
-		BFShader.SetFloat("sigma_R", sigma_R);
-		for (int i = 0; i < amount; i++)
+		//Bilateral Filtering
+		if (bilateralFilter)
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
-			BFShader.SetInt("horizontal", horizontal);
-			glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
-			renderQuad();
-			horizontal = !horizontal;
-			if (first_it)
-				first_it = false;
+			bool horizontal = true, first_it = true;
+			int amount = 10;
+			BFShader.Use();
+			BFShader.SetFloat("sigma_S", sigma_S);
+			BFShader.SetFloat("sigma_R", sigma_R);
+			for (int i = 0; i < amount; i++)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
+				BFShader.SetInt("horizontal", horizontal);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
+				renderQuad();
+				horizontal = !horizontal;
+				if (first_it)
+					first_it = false;
+			}
+			finalpingpongTex_2 = BFAOTex[horizontal];
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
-		finalpingpongTex_2 = BFAOTex[!horizontal];
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		else
+		{
+			bool horizontal = true, first_it = true;
+			int amount = 10;
+			gaussianblurShader.Use();
+			gaussianblurShader.SetFloat("sigma_S", sigma_S);
+			gaussianblurShader.SetFloat("sigma_R", sigma_R);
+			for (int i = 0; i < amount; i++)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
+				gaussianblurShader.SetInt("horizontal", horizontal);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
+				renderQuad();
+				horizontal = !horizontal;
+				if (first_it)
+					first_it = false;
+			}
+			finalpingpongTex_2 = BFAOTex[horizontal];
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		
 
 		////////////////////////////////////////
 
@@ -748,7 +775,8 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D, gNormal);
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
-
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, finalpingpongTex_2);
 		
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
@@ -765,7 +793,7 @@ void Renderer::render_update()
 		glDepthMask(GL_TRUE);
 		/////////////////////////////////////////
 
-		//Add Global Ambient
+		////Add Global Ambient
 		glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glCullFace(GL_BACK);
@@ -991,6 +1019,8 @@ void Renderer::updateShaders()
 	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
 	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
 	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
+	BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
+
 }
 void Renderer::clear()
 {

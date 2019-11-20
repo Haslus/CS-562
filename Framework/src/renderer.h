@@ -92,21 +92,24 @@ private:
 	float tessAlpha = 1.0f;*/
 	glm::mat4x4 proj;
 	std::vector<Object> objects;
+
+	bool drawDecals = false;
 	std::vector<Decal> decals;
 	unsigned int renderTexture;
 	int drawMode = 0;
 	float angleLimit = 0.8f;
 
 	//HBAO
-	float radius = 30;
+	float radius = 3;
 	float angleBias = 0;
 	int numDirections = 4;
 	int numSteps = 10;
 	float attenuation = 1;
 	float scale = 1;
 
-	float sigma_S = 1;
-	float sigma_R = 1;
+	float sigma_S = 6;
+	float sigma_R = 0.25;
+	bool bilateralFilter = true;
 
 
 public:

@@ -9,5 +9,5 @@ layout(binding = 1) uniform sampler2D Scene;
 void main()
 {
 
-	FragColor = vec4(texture(Diffuse,TexCoords).rgb,1) +  vec4(texture(Scene,TexCoords).rgb,1);
+	FragColor = vec4(texture(Scene,TexCoords).rgb,1);
 }

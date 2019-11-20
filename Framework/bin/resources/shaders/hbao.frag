@@ -4,18 +4,13 @@ layout (location = 0) out vec4 FragColor;
 
 in vec2 TexCoords;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+layout(binding = 0) uniform sampler2D Normal;
+layout(binding = 1) uniform sampler2D Position;
+layout(binding = 2) uniform sampler2D Noise;
 
-layout(binding = 0) uniform sampler2D ZBuffer;
-layout(binding = 1) uniform sampler2D Normal;
-layout(binding = 2) uniform sampler2D Position;
-layout(binding = 3) uniform sampler2D Noise;
+#define PI 3.1415926535897932384626433832795f
 
-#define PI 3.1415926535897932384626433832795
-
-uniform float radius = 30;
+uniform float radius = 3;
 uniform float angleBias = 0;
 uniform int numDirections = 4;
 uniform int numSteps = 10;
@@ -25,51 +20,63 @@ uniform vec2 ScreenSize;
 
 float angle_of_2_vectors(vec3 v1, vec3 v2)
 {
-	return acos(dot(v1,v2) / (length(v1) * length(v2) ) );
+	return acos( dot(v1,v2) );
 }
 
 void main()
 {
+	vec3 currentP = texture(Position,TexCoords).xyz;
 
-	float offset = 360.0f / numDirections;
-	float stepSize = radius / numSteps;
+	float offset = radians(360.0f / numDirections);
 
-	vec2 Tstep = 1.0 / ScreenSize;
+	float projected_radius = float(radius);
+
+	float stepSize = float(projected_radius / numSteps);
+
+	vec2 Tstep = 1.0f / ScreenSize;
 
 	float totalAO = 0;
 
-	float randomFactor = 1;
+	float randomFactor = radians(90 * texture(Noise,TexCoords).r);
 
 	for(int i = 0; i < numDirections; i++)
 	{
-		vec2 dir = normalize( vec2( cos(offset * randomFactor * i), sin(offset * randomFactor * i) ) );
+		vec2 dir = normalize( vec2( cos(offset * i + randomFactor), sin(offset * i + randomFactor) ) );
 
-		vec2 TC = TexCoords;
+		float tangentAngle = radians(90) - angle_of_2_vectors(normalize(texture(Normal,TexCoords).xyz), vec3(dir,0)) + radians(angleBias);
 
-		vec3 B = normalize(cross(texture(Normal,TexCoords).xyz, vec3(dir,0) ));
-		vec3 T = normalize(cross(texture(Normal,TexCoords).xyz,B));
-
-		float tangentAngle = PI - angle_of_2_vectors(texture(Normal,TexCoords).xyz, vec3(dir,0));
+		vec3 C = cross(texture(Normal,TexCoords).xyz,vec3(dir,0));
+		vec3 T = cross(texture(Normal,TexCoords).xyz,C);
+		tangentAngle = atan( T.z / length(T.xy));
 
 		float horizonAngle = 0;
+		float distance = 0;
+		vec2 sampleOffset = dir * stepSize * Tstep;
 
-		for(int j = 0; j < numSteps; j++)
+		for(int j = 1; j <= numSteps; j++)
 		{
-			TC += dir * stepSize * Tstep; 
+			vec2 currentTC = TexCoords + j * sampleOffset;
 
 			//Horizon Vector
-			vec3 H = texture(Position,TC).rgb - texture(Position,TexCoords).rgb;
+			vec3 H =  normalize(texture(Position,currentTC).xyz - currentP);
 
 			float angleH = atan( H.z / length(H.xy));
+			angleH =  radians(90) - angle_of_2_vectors(H,normalize(texture(Normal,TexCoords).xyz));
 
-			if(horizonAngle < angleH )
+			if(length(H) < radius)
 			{
-				horizonAngle = angleH;
-			}
+				if( horizonAngle < angleH )
+				{
+					horizonAngle = angleH;
+					distance = length(texture(Position,currentTC).xyz - currentP);
+
+				}
+			}	
 
 		}
 
-		float AO = sin(horizonAngle) - sin(tangentAngle);
+		float falloff = clamp(0.0f,1.0f,1.0f - distance * distance);
+		float AO = (sin(horizonAngle) - sin(tangentAngle)) * attenuation * falloff;
 
 		totalAO += AO;
 	}
@@ -77,6 +84,8 @@ void main()
 
 	totalAO /= numDirections;
 	totalAO = 1 - totalAO;
-	FragColor = vec4(totalAO,totalAO,totalAO,1);
+
+
+	FragColor = vec4(totalAO * scale,totalAO * scale,totalAO * scale,1);
 
 }
