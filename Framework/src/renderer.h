@@ -100,16 +100,24 @@ private:
 	float angleLimit = 0.8f;
 
 	//HBAO
-	float radius = 3;
-	float angleBias = 0;
+	bool HBAOEnable = true;
+	float radius = 10.f;
+	float angleBias = 0.f;
 	int numDirections = 4;
 	int numSteps = 10;
-	float attenuation = 1;
-	float scale = 1;
+	float attenuation = 1.7f;
+	float scale = 1.f;
 
 	float sigma_S = 6;
-	float sigma_R = 0.25;
+	float sigma_R = 0.5;
 	bool bilateralFilter = true;
+	int BF_size = 5;
+	int GB_sIZE = 5;
+
+	const float weight_3[3] = { 0.262014f, 0.225429f, 0.143564f };
+	const float weight_5[5] = { 0.221569f, 0.190631f, 0.121403f, 0.057223f, 0.019959f };
+	const float weight_7[7] = { 0.218884f, 0.188321f, 0.119932f, 0.05653f, 0.019717f, 0.005088f, 0.000971f };
+	const float weight_9[9] = { 0.218818f, 0.188264f, 0.119895f, 0.056512f, 0.019711f, 0.005086f, 0.000971f, 0.000137f, 0.000014f };
 
 
 public:

@@ -127,18 +127,18 @@ void Renderer::renderImGUI()
 	ImGui::Text("Blurred Bloom (Pingpong)");
 	if(ImGui::ImageButton((void*)(intptr_t)finalpingpongTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = finalpingpongTex;
-	ImGui::Text("Final Result + Anti Aliasing + Bloom");
-	if(ImGui::ImageButton((void*)(intptr_t)blendTex,		ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
-		renderTexture = blendTex;
 	ImGui::Text("Random Texture");
 	if (ImGui::ImageButton((void*)(intptr_t)randomTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = randomTex;
 	ImGui::Text("Ambient Occlusion");
 	if (ImGui::ImageButton((void*)(intptr_t)AOTex,			ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = AOTex;
-	ImGui::Text("Ambient Occlusion with Bilateral Filtering");
+	ImGui::Text("Ambient Occlusion with Filtering");
 	if (ImGui::ImageButton((void*)(intptr_t)finalpingpongTex_2,			 ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = finalpingpongTex_2;
+	ImGui::Text("Final Result + Anti Aliasing + Bloom + Ambient Occlusion (If Enabled)");
+	if (ImGui::ImageButton((void*)(intptr_t)blendTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
+		renderTexture = blendTex;
 	ImGui::End();
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
@@ -189,30 +189,49 @@ void Renderer::renderImGUI()
 
 	}
 
-	if(ImGui::TreeNode("Decals"))
-	{
-		const char * items[] = { "Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume" };
-		;
-		ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
-		ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
+	ImGui::Checkbox("Enable Decals", &drawDecals);
 
-		ImGui::TreePop();
+	if (drawDecals)
+	{
+		if (ImGui::TreeNode("Decals"))
+		{
+			const char * items[] = { "Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume" };
+			;
+			ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
+			ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
+
+			ImGui::TreePop();
+		}
 	}
 	
-	if (ImGui::TreeNode("Horizon Based Ambient Occlusion"))
-	{
-		ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 500);
-		ImGui::DragFloat("Angles Bias", &angleBias, 0.01f, 0.0f, 360.0f);
-		ImGui::InputInt("Number of Directions", &numDirections);
-		ImGui::InputInt("Number of Steps", &numSteps);
-		ImGui::DragFloat("Attenuation Factor", &attenuation,0.1f,0,10);
-		ImGui::DragFloat("Scale Factor", &scale, 0.1f,0.1f,100);
 
-		ImGui::DragFloat("Sigma R", &sigma_R, 0.1f, 0.1f, 100);
-		ImGui::DragFloat("Sigma S", &sigma_S, 0.1f, 0.1f, 100);
-		ImGui::Checkbox("use Bilaterial Filter (If FALSE use Gaussian Blur)", &bilateralFilter);
-		ImGui::TreePop();
+	ImGui::Checkbox("Enable HBAO", &HBAOEnable);
+
+	if (HBAOEnable)
+	{
+		if (ImGui::TreeNode("Horizon Based Ambient Occlusion"))
+		{
+			ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 500);
+			ImGui::DragFloat("Angles Bias", &angleBias, 0.01f, 0.0f, 360.0f);
+			ImGui::InputInt("Number of Directions", &numDirections);
+			ImGui::InputInt("Number of Steps", &numSteps);
+			ImGui::DragFloat("Attenuation Factor", &attenuation, 0.01f, 0, 10);
+			ImGui::DragFloat("Scale Factor", &scale, 0.01f, 0.0f, 100);
+
+			ImGui::Checkbox("use Bilaterial Filter (If FALSE use Gaussian Blur)", &bilateralFilter);
+			ImGui::InputInt("Bilateral Filter Size", &BF_size);
+			ImGui::DragFloat("Sigma R (Bilateral)", &sigma_R, 0.01f, 0.1f, 1000);
+			ImGui::DragFloat("Sigma S (Bilateral)", &sigma_S, 0.01f, 0.1f, 1000);
+
+			const char * items[] = { "3", "5", "7" };
+			static int sizeGB;
+			ImGui::Combo("Gaussian Size", &sizeGB, items, IM_ARRAYSIZE(items));
+			GB_sIZE = std::stoi(items[sizeGB]);
+
+			ImGui::TreePop();
+		}
 	}
+	
 
 
 	ImGui::End();
@@ -634,7 +653,8 @@ void Renderer::render_update()
 		for (auto & it : scene_lights)
 			it.update(dt);
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//Geometry Pass
@@ -675,78 +695,111 @@ void Renderer::render_update()
 		
 		/////////////////////////////////////////
 
+
 		//Horizon Based Ambient Occlusion
+		
 
-		glBindFramebuffer(GL_FRAMEBUFFER, AOBuffer);
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		glCullFace(GL_BACK);
-		glDisable(GL_DEPTH_TEST);
-
-		HBAOShader.Use();
-		HBAOShader.SetMat4("projection", proj);
-		HBAOShader.SetMat4("view", m_cam.ViewMatrix);
-		HBAOShader.SetVec2("ScreenSize", vec2(width, height));
-
-		HBAOShader.SetFloat("radius", radius);
-		HBAOShader.SetFloat("angleBias", angleBias);
-		HBAOShader.SetInt("numDirections", numDirections);
-		HBAOShader.SetInt("numSteps", numSteps);
-		HBAOShader.SetFloat("attenuation", attenuation);
-		HBAOShader.SetFloat("scale", scale);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, gNormal);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, gPosition);
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, randomTex);
-		renderQuad();
-
-
-		//Bilateral Filtering
-		if (bilateralFilter)
+		if (HBAOEnable)
 		{
-			bool horizontal = true, first_it = true;
-			int amount = 10;
-			BFShader.Use();
-			BFShader.SetFloat("sigma_S", sigma_S);
-			BFShader.SetFloat("sigma_R", sigma_R);
-			for (int i = 0; i < amount; i++)
+			glBindFramebuffer(GL_FRAMEBUFFER, AOBuffer);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glCullFace(GL_BACK);
+			glDisable(GL_DEPTH_TEST);
+
+			HBAOShader.Use();
+			HBAOShader.SetMat4("projection", proj);
+			HBAOShader.SetMat4("view", m_cam.ViewMatrix);
+			HBAOShader.SetVec2("ScreenSize", vec2(width, height));
+
+			HBAOShader.SetFloat("radius", radius);
+			HBAOShader.SetFloat("angleBias", angleBias);
+			HBAOShader.SetInt("numDirections", numDirections);
+			HBAOShader.SetInt("numSteps", numSteps);
+			HBAOShader.SetFloat("attenuation", attenuation);
+			HBAOShader.SetFloat("scale", scale);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, gNormal);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, gPosition);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, randomTex);
+			renderQuad();
+
+
+			//Bilateral Filtering
+			if (bilateralFilter)
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
-				BFShader.SetInt("horizontal", horizontal);
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
-				renderQuad();
-				horizontal = !horizontal;
-				if (first_it)
-					first_it = false;
+				bool horizontal = true, first_it = true;
+				int amount = 10;
+				BFShader.Use();
+				BFShader.SetFloat("sigma_S", sigma_S);
+				BFShader.SetFloat("sigma_R", sigma_R);
+				BFShader.SetInt("size", BF_size);
+				for (int i = 0; i < amount; i++)
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
+					BFShader.SetInt("horizontal", horizontal);
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
+					renderQuad();
+					horizontal = !horizontal;
+					if (first_it)
+						first_it = false;
+				}
+				finalpingpongTex_2 = BFAOTex[horizontal];
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			}
-			finalpingpongTex_2 = BFAOTex[horizontal];
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			else
+			{
+				bool horizontal = true, first_it = true;
+				int amount = 10;
+				gaussianblurShader.Use();
+				gaussianblurShader.SetInt("size", GB_sIZE);
+
+				for (int i = 0; i < GB_sIZE; i++)
+				{
+					if (GB_sIZE == 5)
+					{
+						gaussianblurShader.SetFloat("weight[" + std::to_string(i) + ']', weight_5[i]);
+					}
+					else if (GB_sIZE == 7)
+					{
+						gaussianblurShader.SetFloat("weight[" + std::to_string(i) + ']', weight_7[i]);
+					}
+					else if (GB_sIZE == 3)
+					{
+						gaussianblurShader.SetFloat("weight[" + std::to_string(i) + ']', weight_3[i]);
+					}
+				}
+
+				for (int i = 0; i < amount; i++)
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
+					gaussianblurShader.SetInt("horizontal", horizontal);
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
+					renderQuad();
+					horizontal = !horizontal;
+					if (first_it)
+						first_it = false;
+				}
+				finalpingpongTex_2 = BFAOTex[horizontal];
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			}
 		}
+
 		else
 		{
-			bool horizontal = true, first_it = true;
-			int amount = 10;
-			gaussianblurShader.Use();
-			gaussianblurShader.SetFloat("sigma_S", sigma_S);
-			gaussianblurShader.SetFloat("sigma_R", sigma_R);
-			for (int i = 0; i < amount; i++)
-			{
-				glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[horizontal]);
-				gaussianblurShader.SetInt("horizontal", horizontal);
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, first_it ? AOTex : BFAOTex[!horizontal]);
-				renderQuad();
-				horizontal = !horizontal;
-				if (first_it)
-					first_it = false;
-			}
-			finalpingpongTex_2 = BFAOTex[horizontal];
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, AOBuffer);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[0]);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[1]);
+			glClear(GL_COLOR_BUFFER_BIT);
 		}
+		
 		
 
 		////////////////////////////////////////
@@ -777,6 +830,7 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, finalpingpongTex_2);
+		lightingPassShader.SetBool("HBAO", HBAOEnable);
 		
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
@@ -891,12 +945,19 @@ void Renderer::render_update()
 		//Gaussian Blur
 		{
 			bool horizontal = true, first_it = true;
-			int amount = 20;
+			int amount = 5;
 			gaussianblurShader.Use();
 			for (int i = 0; i < amount; i++)
 			{
 				glBindFramebuffer(GL_FRAMEBUFFER, pingpongBuffer[horizontal]);
 				gaussianblurShader.SetInt("horizontal", horizontal);
+				gaussianblurShader.SetInt("size", 5);
+				for (int i = 0; i < GB_sIZE; i++)
+				{
+
+					gaussianblurShader.SetFloat("weight[" + std::to_string(i) + ']', weight_5[i]);
+
+				}
 				glBindTexture(GL_TEXTURE_2D, first_it ? bloomTex : pingpongTex[!horizontal]);
 				renderQuad();
 				horizontal = !horizontal;

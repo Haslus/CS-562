@@ -8,6 +8,7 @@ layout(binding = 2) uniform sampler2D gAlbedoSpec;
 layout(binding = 3) uniform sampler2D Ambient;
 
 uniform vec3 viewPos;
+uniform bool HBAO;
 
 struct Light {
     vec4 Position;
@@ -64,7 +65,10 @@ void main()
 	lighting += diffuse + specular;
     
 	
-    FragColor = vec4(lighting * texture(Ambient,TexCoords).r, 1.0);
+	if(HBAO)
+		FragColor = vec4(lighting * texture(Ambient,TexCoords).r, 1.0);
+	else
+		FragColor = vec4(lighting, 1.0);
 
 
 }

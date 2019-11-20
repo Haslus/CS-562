@@ -45,10 +45,6 @@ void main()
 
 		float tangentAngle = radians(90) - angle_of_2_vectors(normalize(texture(Normal,TexCoords).xyz), vec3(dir,0)) + radians(angleBias);
 
-		vec3 C = cross(texture(Normal,TexCoords).xyz,vec3(dir,0));
-		vec3 T = cross(texture(Normal,TexCoords).xyz,C);
-		tangentAngle = atan( T.z / length(T.xy));
-
 		float horizonAngle = 0;
 		float distance = 0;
 		vec2 sampleOffset = dir * stepSize * Tstep;
@@ -60,8 +56,8 @@ void main()
 			//Horizon Vector
 			vec3 H =  normalize(texture(Position,currentTC).xyz - currentP);
 
-			float angleH = atan( H.z / length(H.xy));
-			angleH =  radians(90) - angle_of_2_vectors(H,normalize(texture(Normal,TexCoords).xyz));
+			//float angleH = atan( H.z / length(H.xy));
+			float angleH =  radians(90) - angle_of_2_vectors(H,normalize(texture(Normal,TexCoords).xyz));
 
 			if(length(H) < radius)
 			{

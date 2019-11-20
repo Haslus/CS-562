@@ -11,7 +11,8 @@ layout(binding = 0) uniform sampler2D image;
 uniform bool horizontal = false;
 
 uniform float sigma_S = 6;
-uniform float sigma_R = 0.25;
+uniform float sigma_R = 0.5;
+uniform int size = 5;
 
 float calculate_kernel(float sigma, float value)
 {
@@ -28,7 +29,7 @@ void main()
 
 	if(horizontal)
 	{
-		for(int i = 1; i < 5; i++)
+		for(int i = 1; i < size; i++)
 		{
 			vec2 next_TC[2] = {TexCoords + vec2(tex_offset.x * i,0),
 			TexCoords - vec2(tex_offset.x * i,0)};
@@ -47,7 +48,7 @@ void main()
 
 	else
 	{
-		for( int i = 1; i < 5; i++)
+		for( int i = 1; i < size; i++)
 		{
 			vec2 next_TC[2] = {TexCoords + vec2(0.0,tex_offset.y * i),
 			TexCoords - vec2(0.0,tex_offset.y * i)};
