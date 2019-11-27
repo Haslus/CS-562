@@ -9,6 +9,10 @@
 *
 */
 
+#define FOURCC_DXT1 0x31545844 // Equivalent to "DXT1" in ASCII
+#define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
+#define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
+
 #include "pch.h"
 #include "model.h"
 
@@ -18,6 +22,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#include "glsc2ext.h"
 
 #include <assimp/cimport.h>
 
@@ -262,77 +268,16 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	bool skip = false;
 	aiString str;
 	material->GetTexture(aiTextureType_DIFFUSE, 0, &str);
+
+	Texture texture;
+	if (TextureFromFile(str.C_Str(), texture.m_id))
+	{
+		texture.m_type = "Diffuse";
+		texture.m_path = str.C_Str();
+		textures.push_back(texture);
+		textures_loaded.push_back(texture);
+	}
 	
-	for (auto tex_loaded : textures_loaded)
-	{
-		if (std::strcmp(tex_loaded.m_path.data(), str.C_Str()) == 0)
-		{
-			textures.push_back(tex_loaded);
-			skip = true;
-			break;
-		}
-	}
-
-	if (!skip)
-	{
-		Texture texture;
-		if (TextureFromFile(str.C_Str(), texture.m_id))
-		{
-			texture.m_type = "Diffuse";
-			texture.m_path = str.C_Str();
-			textures.push_back(texture);
-			textures_loaded.push_back(texture);
-		}
-		
-	}
-	skip = false;
-	material->GetTexture(aiTextureType_SPECULAR, 0, &str);
-
-	for (auto tex_loaded : textures_loaded)
-	{
-		if (std::strcmp(tex_loaded.m_path.data(), str.C_Str()) == 0)
-		{
-			textures.push_back(tex_loaded);
-			skip = true;
-			break;
-		}
-	}
-
-	if (!skip)
-	{
-		Texture texture;
-		if (TextureFromFile(str.C_Str(), texture.m_id))
-		{
-			texture.m_type = "Specular";
-			texture.m_path = str.C_Str();
-			textures.push_back(texture);
-			textures_loaded.push_back(texture);
-		}
-	}
-	skip = false;
-	material->GetTexture(aiTextureType_HEIGHT, 0, &str);
-
-	for (auto tex_loaded : textures_loaded)
-	{
-		if (std::strcmp(tex_loaded.m_path.data(), str.C_Str()) == 0)
-		{
-			textures.push_back(tex_loaded);
-			skip = true;
-			break;
-		}
-	}
-
-	if (!skip)
-	{
-		Texture texture;
-		if (TextureFromFile(str.C_Str(), texture.m_id))
-		{
-			texture.m_type = "NormalMap";
-			texture.m_path = str.C_Str();
-			textures.push_back(texture);
-			textures_loaded.push_back(texture);
-		}
-	}
 	
 	return new Mesh(vertices, indices, textures, Material{ specular,diffuse,ambient,shininess });
 }
@@ -344,55 +289,30 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 bool TextureFromFile(const char * path,unsigned int & textureID)
 {
 	std::string filename = std::string(path);
-
+	//filename = "./data" + filename.substr(filename.find_first_of('.') + 1);
 
 	int width, height, comps;
-	unsigned char* data = stbi_load(filename.c_str(), &width, &height, &comps, 0);
+	
+	auto i = loadDDS(filename.c_str(), width, height);
 
-	if (data)
+	if (i)
 	{
-		glGenTextures(1, &textureID);
-
-		GLenum format;
-		switch (comps)
-		{
-		case 1:
-		{
-			format = GL_RED;
-			break;
-		}
-		case 3:
-		{
-			format = GL_RGB;
-			break;
-		}
-		case 4:
-		{
-			format = GL_RGBA;
-			break;
-		}
-		default:
-			std::cout << "Not valid format texture. " << std::endl;
-			stbi_image_free(data);
-			return false;
-		}
-
-		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		textureID = i;
+		/*glBindTexture(GL_TEXTURE_2D, i);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);*/
 
 
 	}
 	else
 	{
 		std::cout << "Texture failed to load at path: " << path << std::endl;
-		stbi_image_free(data);
+		//stbi_image_free(data);
 		return false;
 	}
 
@@ -457,4 +377,96 @@ void Decal::Draw(Shader shader, DrawMode drawMode)
 	default:
 		break;
 	}
+}
+
+GLuint loadDDS(const char * imagepath, int & _width, int & _height) 
+{
+
+	unsigned char header[124];
+
+	FILE *fp;
+
+	/* try to open the file */
+	fp = fopen(imagepath, "rb");
+	if (fp == NULL)
+		return 0;
+
+	/* verify the type of file */
+	char filecode[4];
+	fread(filecode, 1, 4, fp);
+	if (strncmp(filecode, "DDS ", 4) != 0) {
+		fclose(fp);
+		return 0;
+	}
+
+	/* get the surface desc */
+	fread(&header, 124, 1, fp);
+
+	unsigned int height = *(unsigned int*)&(header[8]);
+	unsigned int width = *(unsigned int*)&(header[12]);
+	unsigned int linearSize = *(unsigned int*)&(header[16]);
+	unsigned int mipMapCount = *(unsigned int*)&(header[24]);
+	unsigned int fourCC = *(unsigned int*)&(header[80]);
+
+	_width = width;
+	_height = height;
+
+	unsigned char * buffer;
+	unsigned int bufsize;
+	/* how big is it going to be including all mipmaps? */
+	bufsize = mipMapCount > 1 ? linearSize * 2 : linearSize;
+	buffer = (unsigned char*)malloc(bufsize * sizeof(unsigned char));
+	fread(buffer, 1, bufsize, fp);
+	/* close the file pointer */
+	fclose(fp);
+	
+	unsigned int components = (fourCC == FOURCC_DXT1) ? 3 : 4;
+	unsigned int format;
+	switch (fourCC)
+	{
+	case FOURCC_DXT1:
+		format = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+		break;
+	case FOURCC_DXT3:
+		format = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+		break;
+	case FOURCC_DXT5:
+		format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+		break;
+	default:
+		free(buffer);
+		return 0;
+	}
+
+	// Create one OpenGL texture
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+
+	// "Bind" the newly created texture : all future texture functions will modify this texture
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	unsigned int blockSize = (format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT) ? 8 : 16;
+	unsigned int offset = 0;
+
+	/* load the mipmaps */
+	for (unsigned int level = 0; level < mipMapCount && (width || height); ++level)
+	{
+		unsigned int size = ((width + 3) / 4)*((height + 3) / 4)*blockSize;
+		glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height,
+			0, size, buffer + offset);
+
+		offset += size;
+		width /= 2;
+		height /= 2;
+
+		// Deal with Non-Power-Of-Two textures. This code is not included in the webpage to reduce clutter.
+		if (width < 1) width = 1;
+		if (height < 1) height = 1;
+
+	}
+
+	free(buffer);
+
+	return textureID;
 }

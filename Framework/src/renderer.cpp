@@ -95,7 +95,7 @@ void Renderer::updateImGUI()
 */
 void Renderer::renderImGUI()
 {
-	ImGui::Begin("All Buffers", nullptr, m_flags);
+	/*ImGui::Begin("All Buffers", nullptr, m_flags);
 
 	ImGui::Text("Position G-Bufffer");
 	if (ImGui::ImageButton((void*)(intptr_t)gPosition, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
@@ -139,7 +139,7 @@ void Renderer::renderImGUI()
 	ImGui::Text("Final Result + Anti Aliasing + Bloom + Ambient Occlusion (If Enabled)");
 	if (ImGui::ImageButton((void*)(intptr_t)blendTex, ImVec2(480, 270), ImVec2(0, 1), (ImVec2(1, 0))))
 		renderTexture = blendTex;
-	ImGui::End();
+	ImGui::End();*/
 
 	ImGui::Begin("Properties of the scene", nullptr, m_flags);
 
@@ -617,8 +617,7 @@ void Renderer::render_initialize()
 
 
 	
-	read_JSON("./data/scenes/models.json");
-	read_JSON_Scene("./data/scenes/sceneDecals.json");
+	read_JSON("./data/scenes/scene.json");
 
 
 	//objects.push_back(Object(new Model(models[0])));
@@ -650,13 +649,31 @@ void Renderer::render_update()
 		dt = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		get_input();
-		for (auto & it : scene_lights)
-			it.update(dt);
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
+		glClearColor(0.0f, 0.20f, 0.00f, 1.0f);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		glDisable(GL_BLEND);
+		glCullFace(GL_BACK);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LESS);
+
+		shader.Use();
+		shader.SetMat4("proj", proj);
+		shader.SetMat4("view", m_cam.ViewMatrix);
+
+		models[0].Draw(shader);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		updateImGUI();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+
+		continue;
+
+#pragma region Stuff
 		//Geometry Pass
 		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -692,12 +709,12 @@ void Renderer::render_update()
 			for (auto & dec : decals)
 				dec.Draw(decalShader, static_cast<Decal::DrawMode>(drawMode));
 		}
-		
+
 		/////////////////////////////////////////
 
 
 		//Horizon Based Ambient Occlusion
-		
+
 
 		if (HBAOEnable)
 		{
@@ -799,8 +816,8 @@ void Renderer::render_update()
 			glBindFramebuffer(GL_FRAMEBUFFER, BFBuffer[1]);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
-		
-		
+
+
 
 		////////////////////////////////////////
 
@@ -809,7 +826,7 @@ void Renderer::render_update()
 		glBindFramebuffer(GL_FRAMEBUFFER, lightBuffer);
 		//Blending
 		glDepthMask(GL_FALSE);
-		
+
 		glDepthFunc(GL_GREATER);
 		glEnable(GL_DEPTH_TEST);
 
@@ -831,18 +848,18 @@ void Renderer::render_update()
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, finalpingpongTex_2);
 		lightingPassShader.SetBool("HBAO", HBAOEnable);
-		
+
 		for (unsigned int i = 0; i < scene_lights.size(); i++)
 		{
 			scene_lights[i].model->transform.SetScale(glm::vec3(scene_lights[i].radius));
 
-			lightingPassShader.SetVec4("light.Position", vec4(scene_lights[i].model->transform.Position,1.f));
-			lightingPassShader.SetVec4("light.Color", vec4(scene_lights[i].color,1));
+			lightingPassShader.SetVec4("light.Position", vec4(scene_lights[i].model->transform.Position, 1.f));
+			lightingPassShader.SetVec4("light.Color", vec4(scene_lights[i].color, 1));
 			lightingPassShader.SetFloat("light.Radius", scene_lights[i].radius);
 
 			scene_lights[i].model->Draw(lightingPassShader);
 		}
-		
+
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
 		/////////////////////////////////////////
@@ -989,11 +1006,11 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D, renderTexture);
 		renderQuad();
 		/////////////////////////////////////////
+#pragma endregion
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		updateImGUI();
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+		
+
+		
 	}
 }
 /**

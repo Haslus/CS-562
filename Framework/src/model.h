@@ -21,6 +21,7 @@
 
 bool TextureFromFile(const char* path, unsigned int & textureID);
 
+GLuint loadDDS(const char * imagepath, int & _width, int & height);
 
 struct Vertex
 {
