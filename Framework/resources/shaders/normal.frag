@@ -9,6 +9,7 @@ layout(binding = 2) uniform sampler2D Normal;
 
 void main()
 {           
-    FragColor = texture(Diffuse, TexCoords);
-	//FragColor = vec4(1,0,0,1);
+	vec2 TC = TexCoords;
+    FragColor = texture(Diffuse, TC );
+	//FragColor = vec4(TexCoords.x,TexCoords.y,0,1);
 }
