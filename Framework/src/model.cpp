@@ -42,12 +42,11 @@ Mesh::~Mesh()
 * @brief 	Custom constructor for the Mesh, also creates the data for Rendering
 */
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
-	std::vector<Texture> textures, Material material)
+	std::vector<Texture> textures)
 {
 	this->vertices = vertices;
 	this->indices = indices;
 	this->textures = textures;
-	this->material = material;
 
 	SetupMesh();
 }
@@ -94,20 +93,15 @@ void Mesh::SetupMesh()
 void Mesh::Draw(Shader shader, bool wireframe, bool tessellation)
 {
 	//Set textures
-	for (unsigned i = 0; i < textures.size(); i++)
-	{
-		glActiveTexture(GL_TEXTURE0 + i);
 
-		std::string tex_name = textures[i].m_type;
+	glActiveTexture(GL_TEXTURE0);
 
-		shader.SetInt(tex_name, i);
-		glBindTexture(GL_TEXTURE_2D, textures[i].m_id);
+	std::string tex_name = textures[0].m_type;
 
-	}
-	//Set material properties
-	shader.SetFloat("diffuse", material.diffuse.x != 0 ? material.diffuse.x : 0);
-	shader.SetFloat("specular", material.specular.x != 0 ? material.specular.x : 0);
-	shader.SetFloat("shininess", material.shininess != 0 ? material.shininess : 0);
+	shader.SetInt(tex_name, 0);
+	glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
+
+	
 
 	if (wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -253,16 +247,6 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	//Process material
 	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-	aiColor4D specular;
-	aiColor4D diffuse;
-	aiColor4D ambient;
-	float shininess;
-
-	aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, &specular);
-	aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &diffuse);
-	aiGetMaterialColor(material, AI_MATKEY_COLOR_AMBIENT, &ambient);
-	aiGetMaterialFloat(material, AI_MATKEY_SHININESS, &shininess);
-
 	//Load Diffuse, Specular and Normal textures
 
 	bool skip = false;
@@ -279,7 +263,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	}
 	
 	
-	return new Mesh(vertices, indices, textures, Material{ specular,diffuse,ambient,shininess });
+	return new Mesh(vertices, indices, textures);
 }
 
 /**
@@ -289,30 +273,55 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 bool TextureFromFile(const char * path,unsigned int & textureID)
 {
 	std::string filename = std::string(path);
-	//filename = "./data" + filename.substr(filename.find_first_of('.') + 1);
+
 
 	int width, height, comps;
-	
-	auto i = loadDDS(filename.c_str(), width, height);
+	unsigned char* data = stbi_load(filename.c_str(), &width, &height, &comps, 0);
 
-	if (i)
+	if (data)
 	{
-		textureID = i;
-		/*glBindTexture(GL_TEXTURE_2D, i);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenTextures(1, &textureID);
+
+		GLenum format;
+		switch (comps)
+		{
+		case 1:
+		{
+			format = GL_RED;
+			break;
+		}
+		case 3:
+		{
+			format = GL_RGB;
+			break;
+		}
+		case 4:
+		{
+			format = GL_RGBA;
+			break;
+		}
+		default:
+			std::cout << "Not valid format texture. " << std::endl;
+			stbi_image_free(data);
+			return false;
+		}
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);*/
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 
 
 	}
 	else
 	{
 		std::cout << "Texture failed to load at path: " << path << std::endl;
-		//stbi_image_free(data);
+		stbi_image_free(data);
 		return false;
 	}
 

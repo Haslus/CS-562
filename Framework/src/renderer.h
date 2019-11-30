@@ -28,6 +28,7 @@ private:
 	void renderImGUI();
 	void exitImGUI();
 
+
 	void render_initialize();
 	void renderQuad();
 	void render_update();
@@ -37,6 +38,16 @@ private:
 	void clear();
 	void read_JSON(const std::string& path);
 	void read_JSON_Scene(const std::string& path);
+
+	//Furry
+	void LoadFur();
+	std::vector<unsigned int> furTexture;
+	std::vector<unsigned int> furTextureOffset;
+	Shader furShader;
+	int numShells = 1;
+	unsigned int furTextureArray;
+	unsigned int furTextureOffsetArray;
+	//
 
 	Shader shader;
 	Shader renderShader;

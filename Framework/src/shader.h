@@ -18,7 +18,7 @@ public:
 	Shader() {};
 
 	Shader(const std::string& vertex_path, const std::string& frag_path);
-	Shader(const std::string* paths);
+	Shader(const std::string * paths);
 	void Use();
 
 	void SetBool(const std::string& name, bool value);
@@ -37,10 +37,10 @@ private:
 
 	void CheckCompileErrors(GLuint shader, std::string type);
 
-	GLuint vertex_shader, fragment_shader, tcs_shader, tes_shader;
+	GLuint vertex_shader, fragment_shader, tcs_shader, tes_shader, geo_shader;
 	std::string vertex_shader_text, fragment_shader_text;
 
 	std::string tcs_shader_text, tes_shader_text;
-	
+	std::string geo_shader_text;
 
 };

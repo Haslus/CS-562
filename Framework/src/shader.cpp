@@ -54,93 +54,77 @@ Shader::Shader(const std::string& vertex_path, const std::string& frag_path)
 	InitializeVertShader();
 	InitializeFragShader();
 	LinkProgram();
+	CheckCompileErrors(program, "PROGRAM");
 }
 Shader::Shader(const std::string* paths)
 {
 	program = glCreateProgram();
 
 
-	{
-		std::string line1;
-		std::ifstream file1(paths[0].c_str());
-		if (file1.is_open())
 		{
-			while (std::getline(file1, line1))
+			std::string line1;
+			std::ifstream file1(paths[0].c_str());
+			if (file1.is_open())
 			{
-				vertex_shader_text += line1 + '\n';
+				while (std::getline(file1, line1))
+				{
+					vertex_shader_text += line1 + '\n';
+				}
 			}
-		}
-		file1.close();
+			file1.close();
 
-		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		const char * v_code = vertex_shader_text.c_str();
-		glShaderSource(vertex_shader, 1, &v_code, NULL);
-		glCompileShader(vertex_shader);
-		CheckCompileErrors(vertex_shader, "TESS.VERT");
-	}
+			vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+			const char * v_code = vertex_shader_text.c_str();
+			glShaderSource(vertex_shader, 1, &v_code, NULL);
+			glCompileShader(vertex_shader);
+			CheckCompileErrors(vertex_shader, "FUR.VERT");
+		}
+
+		{
+			std::string line3;
+			std::ifstream file3(paths[1].c_str());
+			if (file3.is_open())
+			{
+				while (std::getline(file3, line3))
+				{
+					geo_shader_text += line3 + '\n';
+				}
+			}
+			file3.close();
+			tes_shader = glCreateShader(GL_GEOMETRY_SHADER);
+			const char * geo_code = geo_shader_text.c_str();
+			glShaderSource(geo_shader, 1, &geo_code, NULL);
+			glCompileShader(geo_shader);
+			CheckCompileErrors(tes_shader, "FUR.GEO");
+		}
+
+		{
+			std::string line4;
+			std::ifstream file4(paths[2].c_str());
+			if (file4.is_open())
+			{
+				while (std::getline(file4, line4))
+				{
+					fragment_shader_text += line4 + '\n';
+				}
+			}
+			file4.close();
+			fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+			const char * f_code = fragment_shader_text.c_str();
+			glShaderSource(fragment_shader, 1, &f_code, NULL);
+			glCompileShader(fragment_shader);
+			CheckCompileErrors(fragment_shader, "FUR.FRAG");
+		}
+
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, geo_shader);
+		glAttachShader(program, fragment_shader);
+		glLinkProgram(program);
+		CheckCompileErrors(program, "PROGRAM");
 	
-	{
-		std::string line2;
-		std::ifstream file2(paths[1].c_str());
-		if (file2.is_open())
-		{
-			while (std::getline(file2, line2))
-			{
-				tcs_shader_text += line2 + '\n';
-			}
-		}
-		file2.close();
 
-		tcs_shader = glCreateShader(GL_TESS_CONTROL_SHADER);
-		const char * tcs_code = tcs_shader_text.c_str();
-		glShaderSource(tcs_shader, 1, &tcs_code, NULL);
-		glCompileShader(tcs_shader);
-		CheckCompileErrors(tcs_shader, "TESS.TCS");
-	}
+
 	
-
-	{
-		std::string line3;
-		std::ifstream file3(paths[2].c_str());
-		if (file3.is_open())
-		{
-			while (std::getline(file3, line3))
-			{
-				tes_shader_text += line3 + '\n';
-			}
-		}
-		file3.close();
-		tes_shader = glCreateShader(GL_TESS_EVALUATION_SHADER);
-		const char * tes_code = tes_shader_text.c_str();
-		glShaderSource(tes_shader, 1, &tes_code, NULL);
-		glCompileShader(tes_shader);
-		CheckCompileErrors(tes_shader, "TESS.TES");
-	}
-	
-	{
-		std::string line4;
-		std::ifstream file4(paths[3].c_str());
-		if (file4.is_open())
-		{
-			while (std::getline(file4, line4))
-			{
-				fragment_shader_text += line4 + '\n';
-			}
-		}
-		file4.close();
-		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-		const char * f_code = fragment_shader_text.c_str();
-		glShaderSource(fragment_shader, 1, &f_code, NULL);
-		glCompileShader(fragment_shader);
-		CheckCompileErrors(fragment_shader, "TESS.FRAG");
-	}
-
-	glAttachShader(program, vertex_shader);
-	glAttachShader(program, tcs_shader);
-	glAttachShader(program, tes_shader);
-	glAttachShader(program, fragment_shader);
-	glLinkProgram(program);
-	CheckCompileErrors(program, "PROGRAM");
 }
 
 /**

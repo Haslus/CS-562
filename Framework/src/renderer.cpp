@@ -8,6 +8,11 @@
 * @brief 	Framework
 *
 */
+#define FOURCC_DXT1 0x31545844 // Equivalent to "DXT1" in ASCII
+#define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
+#define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
+
+
 #include "pch.h"
 #include "renderer.h"
 #include "opengl.h"
@@ -26,6 +31,10 @@ using json = nlohmann::json;
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 
+#include "glsc2ext.h"
+
+//#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 int width;
 int height;
@@ -141,96 +150,11 @@ void Renderer::renderImGUI()
 		renderTexture = blendTex;
 	ImGui::End();*/
 
-	ImGui::Begin("Properties of the scene", nullptr, m_flags);
+	ImGui::Begin("Fur and Shells", nullptr, m_flags);
 
+	ImGui::InputInt("Shells", &numShells);
 
-	if(ImGui::Button("Create Light in Origin"))
-	{
-		scene_lights.push_back(Light{ vec3(0,0,0),vec3(1,1,1), new Model(models[1]) });
-	}
-
-	if (ImGui::Button("Create Light in Random Position"))
-	{
-		const float min_z = -50;
-		const float max_z = 50;
-		const float min_y = 25;
-		const float max_y = 75;
-
-		const float min_col = 0;
-		const float max_col = 1;
-
-		float y = min_y + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_y - min_y)));
-		float z = min_z + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_z - min_z)));
-		float r = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
-		float g = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
-		float b = min_col + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max_col - min_col)));
-
-		scene_lights.push_back(Light{ vec3(0,y,z),vec3(r,g,b), new Model(models[1]) });
-	}
 	
-	if (!scene_lights.empty())
-	{
-		static int light_index = 0;
-		ImGui::DragInt("Light Index", &light_index, 1, 0, static_cast<int>(scene_lights.size() - 1));
-		ImGui::DragFloat3("Light Position", &scene_lights[light_index].model->transform.Position.x, 0.5f, -200, 200);
-		ImGui::DragFloat3("Light Color", &scene_lights[light_index].color.x, 0.1f, 0, 1);
-		ImGui::InputFloat("Radius ", &scene_lights[light_index].radius);
-		if(ImGui::Button("Pause Movement"))
-		{
-			for (auto & it : scene_lights)
-				it.pause = true;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Resume Movement"))
-		{
-			for (auto & it : scene_lights)
-				it.pause = false;
-		}
-
-	}
-
-	ImGui::Checkbox("Enable Decals", &drawDecals);
-
-	if (drawDecals)
-	{
-		if (ImGui::TreeNode("Decals"))
-		{
-			const char * items[] = { "Render Decal Properly Shaded", "Render Only Pixels", "Render Full Decal Volume" };
-			;
-			ImGui::Combo("Draw Modes", &drawMode, items, IM_ARRAYSIZE(items));
-			ImGui::DragFloat("Angle Limit", &angleLimit, 0.01f, 0, 1);
-
-			ImGui::TreePop();
-		}
-	}
-	
-
-	ImGui::Checkbox("Enable HBAO", &HBAOEnable);
-
-	if (HBAOEnable)
-	{
-		if (ImGui::TreeNode("Horizon Based Ambient Occlusion"))
-		{
-			ImGui::DragFloat("Radius", &radius, 0.01f, 0.1f, 500);
-			ImGui::DragFloat("Angles Bias", &angleBias, 0.01f, 0.0f, 360.0f);
-			ImGui::InputInt("Number of Directions", &numDirections);
-			ImGui::InputInt("Number of Steps", &numSteps);
-			ImGui::DragFloat("Attenuation Factor", &attenuation, 0.01f, 0, 10);
-			ImGui::DragFloat("Scale Factor", &scale, 0.01f, 0.0f, 100);
-
-			ImGui::Checkbox("use Bilaterial Filter (If FALSE use Gaussian Blur)", &bilateralFilter);
-			ImGui::InputInt("Bilateral Filter Size", &BF_size);
-			ImGui::DragFloat("Sigma R (Bilateral)", &sigma_R, 0.01f, 0.1f, 1000);
-			ImGui::DragFloat("Sigma S (Bilateral)", &sigma_S, 0.01f, 0.1f, 1000);
-
-			const char * items[] = { "3", "5", "7" };
-			static int sizeGB;
-			ImGui::Combo("Gaussian Size", &sizeGB, items, IM_ARRAYSIZE(items));
-			GB_sIZE = std::stoi(items[sizeGB]);
-
-			ImGui::TreePop();
-		}
-	}
 	
 
 
@@ -285,19 +209,24 @@ void Renderer::render_initialize()
 	//std::string tessellation[4] = { "./resources/shaders/deferred.vert", "./resources/shaders/tessellation.tcs",
 	//	"./resources/shaders/tessellation.tes","./resources/shaders/deferred.frag" };
 
-	gBufferShader = Shader("./resources/shaders/deferred.vert","./resources/shaders/deferred.frag" );
-	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
+	//gBufferShader = Shader("./resources/shaders/deferred.vert","./resources/shaders/deferred.frag" );
+	//lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
+	//renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
+	//edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
+	//blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
+	//ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
+	//bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
+	//gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
+	//blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
+	//decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
+	//HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
+	//BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
+	
+	//std::string fur[3] = { "./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.geo",
+	//	"./resources/shaders/Fur/fur.frag"};
+
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
-	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
-	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
-	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
-	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
-	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
-	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
-	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
-	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
-	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
-	BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
+	furShader = Shader("./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.frag");
 	//tessellationShader = Shader(tessellation);
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
@@ -634,6 +563,10 @@ void Renderer::render_initialize()
 	scene_lights.push_back(Light{ vec3(75,30,0),vec3(1,1,1),new Model(models[0]),150 });
 	//scene_lights.push_back(Light{ vec3(0,5,-30),vec3(1,1,1),new Model(models[1]) });
 	renderTexture = blendTex;
+
+	//Furry Stuff
+	LoadFur();
+	//
 }
 
 /**
@@ -650,7 +583,7 @@ void Renderer::render_update()
 		lastFrame = currentFrame;
 		get_input();
 
-		glClearColor(0.0f, 0.20f, 0.00f, 1.0f);
+		glClearColor(0.20f, 0.20f, 0.20f, 1.0f);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -661,11 +594,46 @@ void Renderer::render_update()
 		glDepthMask(GL_TRUE);
 		glDepthFunc(GL_LESS);
 
+		//Render Mesh
+		
 		shader.Use();
 		shader.SetMat4("proj", proj);
 		shader.SetMat4("view", m_cam.ViewMatrix);
-
 		models[0].Draw(shader);
+		
+		
+		//Render Shells
+		
+		//glDepthMask(GL_FALSE);
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//glBlendEquation(GL_FUNC_ADD);
+		//glBlendFunc(GL_ONE, GL_ONE);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		furShader.Use();
+		furShader.SetMat4("proj", proj);
+		furShader.SetMat4("view", m_cam.ViewMatrix);
+		furShader.SetVec3("Eye", vec3(glm::inverse(models[0].transform.M2W) * vec4(m_cam.camPos,1)));
+		furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f,1))));
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
+
+		furShader.SetVec3("combVector", vec3(0,0,1));
+		furShader.SetFloat("combStrength", 0.3f);
+		furShader.SetInt("numShells",15);
+		furShader.SetFloat("shellIncrement",0.2f);
+
+		for (int i = 1; i <= numShells; i++)
+		{	
+			furShader.SetInt("shell", i);
+			models[0].Draw(furShader);
+		}
+		
+
+		//Render Fins
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		updateImGUI();
 		glfwSwapBuffers(window);
@@ -1085,19 +1053,8 @@ void Renderer::get_input()
 void Renderer::updateShaders()
 {
 	//Load Shaders
-	gBufferShader = Shader("./resources/shaders/deferred.vert", "./resources/shaders/deferred.frag");
-	lightingPassShader = Shader("./resources/shaders/lighting_pass.vert", "./resources/shaders/lighting_pass.frag");
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
-	renderShader = Shader("./resources/shaders/null.vert", "./resources/shaders/null.frag");
-	edgeDetectionShader = Shader("./resources/shaders/edge_detection.vert", "./resources/shaders/edge_detection.frag");
-	blurShader = Shader("./resources/shaders/blur.vert", "./resources/shaders/blur.frag");
-	ambientShader = Shader("./resources/shaders/ambient.vert", "./resources/shaders/ambient.frag");
-	bloomShader = Shader("./resources/shaders/bloom.vert", "./resources/shaders/bloom.frag");
-	gaussianblurShader = Shader("./resources/shaders/gaussianblur.vert", "./resources/shaders/gaussianblur.frag");
-	blendShader = Shader("./resources/shaders/blend.vert", "./resources/shaders/blend.frag");
-	decalShader = Shader("./resources/shaders/decals.vert", "./resources/shaders/decals.frag");
-	HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
-	BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
+	furShader = Shader("./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.frag");
 
 }
 void Renderer::clear()
@@ -1235,6 +1192,154 @@ void Renderer::read_JSON_Scene(const std::string & path)
 
 		decals.push_back(decal);
 	}
+
+}
+
+void Renderer::LoadFur()
+{
+	const std::string furTextures[] = {
+		"./data/FurTexture/PNG/FurTexture00.png",
+		"./data/FurTexture/PNG/FurTexture01.png",
+		"./data/FurTexture/PNG/FurTexture02.png",
+		"./data/FurTexture/PNG/FurTexture03.png",
+		"./data/FurTexture/PNG/FurTexture04.png",
+		"./data/FurTexture/PNG/FurTexture05.png",
+		"./data/FurTexture/PNG/FurTexture06.png",
+		"./data/FurTexture/PNG/FurTexture07.png",
+		"./data/FurTexture/PNG/FurTexture08.png",
+		"./data/FurTexture/PNG/FurTexture09.png",
+		"./data/FurTexture/PNG/FurTexture10.png",
+		"./data/FurTexture/PNG/FurTexture11.png",
+		"./data/FurTexture/PNG/FurTexture12.png",
+		"./data/FurTexture/PNG/FurTexture13.png",
+		"./data/FurTexture/PNG/FurTexture14.png",
+		"./data/FurTexture/PNG/FurTexture15.png" };
+
+	glGenTextures(1, &furTextureArray);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY,
+		1,                    //5 mipmaps
+		GL_RGBA8,               //Internal format
+		128, 128,           //width,height
+		256                   //Number of layers
+	);
+
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	for (int i = 0; i < 16; i++)
+	{
+		int width, height, comps;
+		unsigned char* data = stbi_load(furTextures[i].c_str(), &width, &height, &comps, 0);
+		
+		GLenum format;
+		switch (comps)
+		{
+		case 1:
+		{
+			format = GL_RED;
+			break;
+		}
+		case 3:
+		{
+			format = GL_RGB;
+			break;
+		}
+		case 4:
+		{
+			format = GL_RGBA;
+			break;
+		}
+		default:
+			std::cout << "Not valid format texture. " << std::endl;
+			stbi_image_free(data);
+			return;
+		}
+
+		glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+			0,                      //Mipmap number
+			0, 0, i, //xoffset, yoffset, zoffset
+			width, height, 1,          //width, height, depth
+			format,                 //format
+			GL_UNSIGNED_BYTE,       //type
+			data); //pointer to data
+
+	}
+
+	const std::string furOffset[] = {
+		"./data/FurTexture/PNG/FurTextureOffset00.png",
+		"./data/FurTexture/PNG/FurTextureOffset01.png",
+		"./data/FurTexture/PNG/FurTextureOffset02.png",
+		"./data/FurTexture/PNG/FurTextureOffset03.png",
+		"./data/FurTexture/PNG/FurTextureOffset04.png",
+		"./data/FurTexture/PNG/FurTextureOffset05.png",
+		"./data/FurTexture/PNG/FurTextureOffset06.png",
+		"./data/FurTexture/PNG/FurTextureOffset07.png",
+		"./data/FurTexture/PNG/FurTextureOffset08.png",
+		"./data/FurTexture/PNG/FurTextureOffset09.png",
+		"./data/FurTexture/PNG/FurTextureOffset10.png",
+		"./data/FurTexture/PNG/FurTextureOffset11.png",
+		"./data/FurTexture/PNG/FurTextureOffset12.png",
+		"./data/FurTexture/PNG/FurTextureOffset13.png",
+		"./data/FurTexture/PNG/FurTextureOffset14.png",
+		"./data/FurTexture/PNG/FurTextureOffset15.png" };
+
+
+	glGenTextures(1, &furTextureOffsetArray);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY,
+		1,                    //5 mipmaps
+		GL_RGBA8,               //Internal format
+		128, 128,           //width,height
+		256                   //Number of layers
+	);
+
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
+	for (int i = 0; i < 16; i++)
+	{
+		int width, height, comps;
+		unsigned char* data = stbi_load(furOffset[i].c_str(), &width, &height, &comps, 0);
+
+		GLenum format;
+		switch (comps)
+		{
+		case 1:
+		{
+			format = GL_RED;
+			break;
+		}
+		case 3:
+		{
+			format = GL_RGB;
+			break;
+		}
+		case 4:
+		{
+			format = GL_RGBA;
+			break;
+		}
+		default:
+			std::cout << "Not valid format texture. " << std::endl;
+			stbi_image_free(data);
+			return;
+		}
+
+		glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+			0,                      //Mipmap number
+			0, 0, i, //xoffset, yoffset, zoffset
+			width, height, 1,          //width, height, depth
+			format,                 //format
+			GL_UNSIGNED_BYTE,       //type
+			data); //pointer to data
+	}
+
 
 }
 
