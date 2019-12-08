@@ -47,6 +47,13 @@ private:
 	int numShells = 1;
 	unsigned int furTextureArray;
 	unsigned int furTextureOffsetArray;
+	bool showShells = true;
+
+	bool showFins = true;
+	Shader finShader;
+	unsigned int finTexture;
+	unsigned int finOffset;
+
 	//
 
 	Shader shader;

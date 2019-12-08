@@ -91,11 +91,11 @@ Shader::Shader(const std::string* paths)
 				}
 			}
 			file3.close();
-			tes_shader = glCreateShader(GL_GEOMETRY_SHADER);
+			geo_shader = glCreateShader(GL_GEOMETRY_SHADER);
 			const char * geo_code = geo_shader_text.c_str();
 			glShaderSource(geo_shader, 1, &geo_code, NULL);
 			glCompileShader(geo_shader);
-			CheckCompileErrors(tes_shader, "FUR.GEO");
+			CheckCompileErrors(geo_shader, "FUR.GEO");
 		}
 
 		{

@@ -17,10 +17,18 @@ class Transform
 public:
 	Transform() : Position(glm::vec3{ 0, 0, 0 }), Scale(glm::vec3{ 1,1,1 }), Rotation(glm::vec3{ 0,0,0 })
 	{
+		originalPosition = Position;
+		originalScale = Scale;
+		originalRotation = Rotation;
+		Quaternion_Orientation = glm::quat();
 		RecalculateM2W();
 	};
 	Transform(glm::vec3 Pos, glm::vec3 Sca, glm::vec3 Rot) : Position(Pos), Scale(Sca), Rotation(Rot)
 	{
+		originalPosition = Position;
+		originalScale = Scale;
+		originalRotation = Rotation;
+		Quaternion_Orientation = glm::quat();
 		RecalculateM2W();
 	};
 
@@ -43,8 +51,14 @@ public:
 	glm::vec3 Position;
 	glm::vec3 Scale;
 	glm::vec3 Rotation;
+	glm::quat Quaternion_Orientation;
+
+	void restart();
 
 private:
+	glm::vec3 originalPosition;
+	glm::vec3 originalScale;
+	glm::vec3 originalRotation;
 
 
 };
@@ -59,7 +73,15 @@ public:
 	vec3 camPos = vec3(0, 15, 20);
 	vec3 camFront = vec3(0, 0, -1);
 	vec3 camUp = vec3(0, 1, 0);
+	vec3 camRight;
+	glm::quat quaternion;
+	glm::vec3 axisAngle = vec3(-53, 0.5f, 0);
 
+
+	bool orbital = false;
+	float AngleX = 0;
+	float AngleY = 0;
+	float Radius = 30;
 private:
 
 };

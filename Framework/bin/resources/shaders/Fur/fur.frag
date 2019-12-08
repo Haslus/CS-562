@@ -65,13 +65,13 @@ void main()
 	float sinTL = sqrt(1 - TdotL * TdotL);
 	float sinTE = sqrt(1 - TdotE * TdotE);
 	
-	outputColor.xyz = ka * outputColor.xyz + kd * sinTL * outputColor.xyz +
-	ks * pow(abs(TdotL*TdotE + sinTL*sinTE ),specPower).xxx;
-	
-	//self shadow
-	float minShadow = 0.8;
-	float shadow = (float(shellNumber) / float(numShells)) * (1-minShadow) + minShadow;
-	outputColor.xyz *= shadow;
+	//outputColor.xyz = ka * outputColor.xyz + kd * sinTL * outputColor.xyz +
+	//ks * pow(abs(TdotL*TdotE + sinTL*sinTE ),specPower).xxx;
+	//
+	////self shadow
+	//float minShadow = 0.8;
+	//float shadow = (float(shellNumber) / float(numShells)) * (1-minShadow) + minShadow;
+	//outputColor.xyz *= shadow;
 
 	FragColor = outputColor;
 

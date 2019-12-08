@@ -42,6 +42,15 @@ int height;
 std::string m_win_name;
 ImGuiWindowFlags m_flags;
 
+vec2 offset;
+
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	(void*)window;
+	offset = { xoffset,yoffset };
+}
+
 /**
 * @brief 	Function for error checking
 * @param	error
@@ -154,8 +163,8 @@ void Renderer::renderImGUI()
 
 	ImGui::InputInt("Shells", &numShells);
 
-	
-	
+	ImGui::Checkbox("Orbital", &m_cam.orbital);
+	ImGui::Checkbox("Show Fins", &showFins);
 
 
 	ImGui::End();
@@ -198,6 +207,8 @@ void Renderer::render_initialize()
 	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 	glfwSwapInterval(1);
 
+	glfwSetScrollCallback(window, scroll_callback);
+
 #if _DEBUG
 	setup_gl_debug();
 #endif
@@ -222,11 +233,12 @@ void Renderer::render_initialize()
 	//HBAOShader = Shader("./resources/shaders/hbao.vert", "./resources/shaders/hbao.frag");
 	//BFShader = Shader("./resources/shaders/bilateralfilter.vert", "./resources/shaders/bilateralfilter.frag");
 	
-	//std::string fur[3] = { "./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.geo",
-	//	"./resources/shaders/Fur/fur.frag"};
+	std::string fur[3] = { "./resources/shaders/Fur/fins.vert", "./resources/shaders/Fur/fins.geo",
+		"./resources/shaders/Fur/fins.frag"};
 
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	furShader = Shader("./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.frag");
+	finShader = Shader(fur);
 	//tessellationShader = Shader(tessellation);
 
 	proj = glm::perspective(glm::radians(90.f), (float)width / (float)height, 0.1f, 1000.f);
@@ -574,7 +586,8 @@ void Renderer::render_initialize()
 */
 void Renderer::render_update()
 {
-	
+	glEnable(GL_PRIMITIVE_RESTART);
+	glPrimitiveRestartIndex(-1);
 	while (!glfwWindowShouldClose(window))
 	{
 
@@ -588,8 +601,8 @@ void Renderer::render_update()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glDisable(GL_BLEND);
-		glCullFace(GL_BACK);
 		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
 		glDepthFunc(GL_LESS);
@@ -599,15 +612,46 @@ void Renderer::render_update()
 		shader.Use();
 		shader.SetMat4("proj", proj);
 		shader.SetMat4("view", m_cam.ViewMatrix);
-		models[0].Draw(shader);
-		
+		models[0].Draw(shader,false);
+
+		//Render Fins
+		if (showFins)
+		{
+			glEnable(GL_BLEND);
+			glBlendEquation(GL_FUNC_ADD);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_CULL_FACE);
+			//glCullFace(GL_FRONT);
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+			glDepthFunc(GL_LESS);
+
+			finShader.Use();
+			finShader.SetMat4("proj", proj);
+			finShader.SetMat4("view", m_cam.ViewMatrix);
+			finShader.SetVec3("Eye", vec3(glm::inverse(models[0].transform.M2W) * vec4(m_cam.camPos, 1)));
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, finTexture);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, finOffset);
+
+			models[0].Draw(finShader, true);
+
+		}
+
 		
 		//Render Shells
-		
 		//glDepthMask(GL_FALSE);
 		glEnable(GL_BLEND);
 		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LESS);
 		//glBlendEquation(GL_FUNC_ADD);
 		//glBlendFunc(GL_ONE, GL_ONE);
 		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -633,8 +677,7 @@ void Renderer::render_update()
 		}
 		
 
-		//Render Fins
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
 		updateImGUI();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -1008,40 +1051,76 @@ void Renderer::get_input()
 
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2))
 	{
+		if (m_cam.orbital)
+		{
 
-		float speed = 40.0f;
-		auto  side = glm::normalize(glm::cross(m_cam.camFront, { 0, 1, 0 }));
-		auto  up = glm::normalize(glm::cross(m_cam.camFront, side));
+			if (glfwGetKey(window, GLFW_KEY_Q)) {
 
-		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-			speed *= 0.5f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_W)) {
-			m_cam.camPos += glm::normalize(m_cam.camFront) * dt * speed;
-		}
-		if (glfwGetKey(window, GLFW_KEY_S)) {
-			m_cam.camPos -= glm::normalize(m_cam.camFront) * dt * speed;
-		}
-		if (glfwGetKey(window, GLFW_KEY_A)) {
-			m_cam.camPos -= glm::normalize(side) * dt * speed;
-		}
-		if (glfwGetKey(window, GLFW_KEY_D)) {
-			m_cam.camPos += glm::normalize(side) * dt * speed;
-		}
-		if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-			m_cam.camPos -= up * dt * speed;
-		}
-		if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
-			m_cam.camPos += up * dt * speed;
-		}
+				m_cam.Radius++;
+
+			}
+			if (glfwGetKey(window, GLFW_KEY_E)) {
+
+				m_cam.Radius--;
+
+			}
+
+			m_cam.Radius -= offset.y;
+			offset.y = 0;
+			// View
+			vec2 cursor_delta = { (float)xpos - m_mouse_position.x, (float)ypos - m_mouse_position.y };
+			const float angleSpeed = 0.001f;
+			m_cam.AngleX += cursor_delta.x * angleSpeed;
+			const float max = glm::pi<float>() / 2.f;
+			float delta = cursor_delta.y * angleSpeed;
+			if (((m_cam.AngleY + delta) < max) && (m_cam.AngleY + delta) > (-max))
+			{
+				m_cam.AngleY += delta;
+			}
 
 
-		// View
-		vec2 cursor_delta = { (float)xpos - m_mouse_position.x, (float)ypos - m_mouse_position.y };
-		m_cam.camFront = vec3(vec4(m_cam.camFront, 0) * glm::rotate(glm::radians(15.0f) * dt * 0.5f * cursor_delta.y, side));
-		m_cam.camFront = vec3(vec4(m_cam.camFront, 0) * glm::rotate(glm::radians(15.0f) * dt * 0.5f *cursor_delta.x, vec3(0, 1, 0)));
+		}
 
-		m_cam.RecalculateViewMatrix();
+		else
+		{
+			float speed = 50.0f;
+
+
+			if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+				speed *= 3.0f;
+			}
+			if (glfwGetKey(window, GLFW_KEY_W)) {
+				m_cam.camPos += glm::normalize(m_cam.camFront) * dt * speed;
+			}
+			if (glfwGetKey(window, GLFW_KEY_S)) {
+				m_cam.camPos -= glm::normalize(m_cam.camFront) * dt * speed;
+			}
+			if (glfwGetKey(window, GLFW_KEY_A)) {
+				m_cam.camPos -= glm::normalize(m_cam.camRight) * dt * speed;
+			}
+			if (glfwGetKey(window, GLFW_KEY_D)) {
+				m_cam.camPos += glm::normalize(m_cam.camRight) * dt * speed;
+			}
+			if (glfwGetKey(window, GLFW_KEY_SPACE)) {
+				m_cam.camPos += m_cam.camUp * dt * speed;
+			}
+			if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
+				m_cam.camPos -= m_cam.camUp * dt * speed;
+			}
+
+			vec2 cursor_delta = { (float)xpos - m_mouse_position.x, (float)ypos - m_mouse_position.y };
+			const float angleSpeed = 0.1f;
+			m_cam.axisAngle += vec3(cursor_delta.y * angleSpeed, cursor_delta.x * angleSpeed, 0);
+
+			glm::quat q = glm::quat(glm::radians(m_cam.axisAngle));
+
+			m_cam.quaternion = q;
+
+
+			m_cam.RecalculateViewMatrix();
+		}
+
+		
 
 	}
 
@@ -1052,9 +1131,12 @@ void Renderer::get_input()
 }
 void Renderer::updateShaders()
 {
-	//Load Shaders
+	std::string fur[3] = { "./resources/shaders/Fur/fins.vert", "./resources/shaders/Fur/fins.geo",
+		"./resources/shaders/Fur/fins.frag" };
+
 	shader = Shader("./resources/shaders/normal.vert", "./resources/shaders/normal.frag");
 	furShader = Shader("./resources/shaders/Fur/fur.vert", "./resources/shaders/Fur/fur.frag");
+	finShader = Shader(fur);
 
 }
 void Renderer::clear()
@@ -1339,6 +1421,9 @@ void Renderer::LoadFur()
 			GL_UNSIGNED_BYTE,       //type
 			data); //pointer to data
 	}
+
+	TextureFromFile("./data/FurTexture/PNG/FurTextureFin.png", finTexture);
+	TextureFromFile("./data/FurTexture/PNG/FurTextureOffsetFin.png", finOffset);
 
 
 }

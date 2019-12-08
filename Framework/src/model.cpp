@@ -14,6 +14,7 @@
 #define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
 
 #include "pch.h"
+#include <map>
 #include "model.h"
 
 #include <imgui/imgui.h>
@@ -29,6 +30,22 @@
 
 std::vector<Texture> textures_loaded;
 
+unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, const unsigned int index2, const unsigned int index3) {
+
+	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) {
+		unsigned int*& indices = mesh.mFaces[i].mIndices;
+		for (int edge = 0; edge < 3; ++edge) { //iterate all edges of the face
+			unsigned int v1 = indices[edge]; //first edge index
+			unsigned int v2 = indices[(edge + 1) % 3]; //second edge index
+			unsigned int vOpp = indices[(edge + 2) % 3]; //index of opposite vertex
+			//if the edge matches the search edge and the opposite vertex does not match
+			if (((v1 == index1 && v2 == index2) || (v2 == index1 && v1 == index2)) && vOpp != index3)
+				return vOpp; //we have found the adjacent vertex
+		}
+	}
+	return index3;
+}
+
 /**
 * @brief 	Custom destructor for the Mesh, also creates the data for Rendering
 */
@@ -41,11 +58,12 @@ Mesh::~Mesh()
 /**
 * @brief 	Custom constructor for the Mesh, also creates the data for Rendering
 */
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> tri_indices, std::vector<unsigned int> line_indices,
 	std::vector<Texture> textures)
 {
 	this->vertices = vertices;
-	this->indices = indices;
+	this->triangle_indices = tri_indices;
+	this->lineadj_indices = line_indices;
 	this->textures = textures;
 
 	SetupMesh();
@@ -65,7 +83,7 @@ void Mesh::SetupMesh()
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangle_indices.size() * sizeof(unsigned int), &triangle_indices[0], GL_STATIC_DRAW);
 
 	//Vertex Position
 	glEnableVertexAttribArray(0);
@@ -90,7 +108,7 @@ void Mesh::SetupMesh()
 /**
 * @brief 	Draws the mesh using the giving shader
 */
-void Mesh::Draw(Shader shader, bool wireframe, bool tessellation)
+void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 {
 	//Set textures
 
@@ -103,21 +121,20 @@ void Mesh::Draw(Shader shader, bool wireframe, bool tessellation)
 
 	
 
-	if (wireframe)
+	if (!wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glBindVertexArray(VAO);
-	if (tessellation)
+	if (fins)
 	{
-		glPatchParameteri(GL_PATCH_VERTICES, 3);
-		glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_LINES_ADJACENCY, static_cast<GLsizei>(lineadj_indices.size()), GL_UNSIGNED_INT, 0);
 	}
 	else
 	{
 
-		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES_ADJACENCY, static_cast<GLsizei>(triangle_indices.size()), GL_UNSIGNED_INT, 0);
 	}
 	glBindVertexArray(0);
 
@@ -235,6 +252,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 
 		vertices.push_back(vertex);
 	}
+
 	//Store indices
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 	{
@@ -243,6 +261,154 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 			indices.push_back(face.mIndices[j]);
 
 	}
+
+	//Store indices as lines
+	std::map<glm::vec3, unsigned int, CompareVectors> m_posMap;
+	std::vector<Face> m_uniqueFaces;
+	std::map<Edge, Neighbors, CompareEdges> m_indexMap;
+	std::vector<unsigned int> triadj_indices;
+	// Step 1 - find the two triangles that share every edge
+	for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+		const aiFace& Face = mesh->mFaces[i];
+
+		Edge e1(Face.mIndices[0], Face.mIndices[1]);
+		Edge e2(Face.mIndices[1], Face.mIndices[2]);
+		Edge e3(Face.mIndices[2], Face.mIndices[0]);
+
+		m_indexMap[e1].AddNeigbor(i);
+		m_indexMap[e2].AddNeigbor(i);
+		m_indexMap[e3].AddNeigbor(i);
+	}
+
+	// Step 2 - build the index buffer with the adjacency info
+	for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+		const aiFace& Face = mesh->mFaces[i];
+
+		for (unsigned int j = 0; j < 3; j++) {
+			Edge e(Face.mIndices[j], Face.mIndices[(j + 1) % 3]);
+			assert(m_indexMap.find(e) != m_indexMap.end());
+			Neighbors n = m_indexMap[e];
+			unsigned int OtherTri = n.GetOther(i);
+
+			if (OtherTri == -1)
+				OtherTri = 0;
+
+			const aiFace& OtherFace = mesh->mFaces[OtherTri];
+			unsigned int OppositeIndex = GetOppositeIndex(OtherFace, e);
+
+			triadj_indices.push_back(Face.mIndices[j]);
+			triadj_indices.push_back(OppositeIndex);
+		}
+	}
+
+	//Now we havbe triangle adjacency
+
+	int numTriangles = mesh->mNumFaces;
+	std::vector<lineAdjData> adj;
+
+	int numVertices = vertices.size();
+
+	std::vector<std::vector<lineAdjData>> candidates;
+
+	for (int i = 0; i < numVertices; i++)
+	{
+		std::vector<lineAdjData> laV;
+		laV.reserve(10);
+		candidates.push_back(laV);
+	}
+
+	std::vector<unsigned int> true_idx;
+	true_idx.resize(6 * mesh->mNumFaces);
+	int index_off = 0;
+	for (int i = 0; i < mesh->mNumFaces; i++, index_off += 6)
+	{
+		true_idx[index_off] = mesh->mFaces[i].mIndices[0];
+		true_idx[index_off + 2] = mesh->mFaces[i].mIndices[1];
+		true_idx[index_off + 4] = mesh->mFaces[i].mIndices[2];
+		true_idx[index_off + 1] = findAdjacentIndex(*mesh, true_idx[index_off + 0], true_idx[index_off + 2], true_idx[index_off + 4]);
+		true_idx[index_off + 3] = findAdjacentIndex(*mesh, true_idx[index_off + 2], true_idx[index_off + 4], true_idx[index_off + 0]);
+		true_idx[index_off + 5] = findAdjacentIndex(*mesh, true_idx[index_off + 4], true_idx[index_off + 0], true_idx[index_off + 2]);
+	}
+
+	bool found; 
+	int index;
+	int triadj_index = 0;
+	for (int i = 0; i < numTriangles; i++, triadj_index += 6)
+	{
+		found = false;
+		lineAdjData l1(true_idx[triadj_index], true_idx[triadj_index + 2],
+			true_idx[triadj_index + 1], true_idx[triadj_index + 4]);
+		index = glm::min(l1.vertex1, l1.vertex2);
+
+		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
+		{
+			if (l1 == candidates.at(index).at(j))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			adj.push_back(l1);
+			candidates.at(index).push_back(l1);
+		}
+
+		found = false;
+		lineAdjData l2(true_idx[triadj_index + 2], true_idx[triadj_index + 4],
+			true_idx[triadj_index + 3], true_idx[triadj_index + 0]);
+		index = glm::min(l2.vertex1, l2.vertex2);
+
+		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
+		{
+			if (l2 == candidates.at(index).at(j))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			adj.push_back(l2);
+			candidates.at(index).push_back(l2);
+		}
+
+		found = false;
+		lineAdjData l3(true_idx[triadj_index + 4], true_idx[triadj_index],
+			true_idx[triadj_index + 2], true_idx[triadj_index + 5]);
+		index = glm::min(l3.vertex1, l3.vertex2);
+
+		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
+		{
+			if (l3 == candidates.at(index).at(j))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			adj.push_back(l3);
+			candidates.at(index).push_back(l3);
+		}
+	}
+	std::vector <unsigned int>debug(200000,0);
+	std::vector<unsigned int> linesadj_indices;
+	for (unsigned int i = 0; i < adj.size(); i++)
+	{
+		linesadj_indices.push_back(adj.at(i).vertex1);
+		linesadj_indices.push_back(adj.at(i).vertex2);
+		linesadj_indices.push_back(adj.at(i).opposite1);
+		linesadj_indices.push_back(adj.at(i).opposite2);
+
+
+	}
+
+	
+
 
 	//Process material
 	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -263,7 +429,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 	}
 	
 	
-	return new Mesh(vertices, indices, textures);
+	return new Mesh(vertices, true_idx, linesadj_indices, textures);
 }
 
 /**
