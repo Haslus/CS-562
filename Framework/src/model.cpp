@@ -121,7 +121,7 @@ void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 
 	
 
-	if (!wireframe)
+	if (wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -129,7 +129,7 @@ void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 	glBindVertexArray(VAO);
 	if (fins)
 	{
-		glDrawElements(GL_LINES_ADJACENCY, static_cast<GLsizei>(lineadj_indices.size()), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES_ADJACENCY, static_cast<GLsizei>(triangle_indices.size()), GL_UNSIGNED_INT, 0);
 	}
 	else
 	{

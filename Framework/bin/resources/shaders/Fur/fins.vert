@@ -6,6 +6,10 @@ layout (location = 2) in vec2 aTexCoords;
 layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
 
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 proj;
+
 out vec2 vert_TexCoords;
 out vec3 vert_Normal;
 
@@ -13,5 +17,5 @@ void main()
 {
 	vert_TexCoords = aTexCoords;
 	vert_Normal = aNormal;
-	gl_Position = vec4(aPosition,1);
+	gl_Position = proj * view * model * vec4(aPosition,1);
 }
