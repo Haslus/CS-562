@@ -612,6 +612,9 @@ void Renderer::render_update()
 		shader.Use();
 		shader.SetMat4("proj", proj);
 		shader.SetMat4("view", m_cam.ViewMatrix);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorTexture);
+		
 		models[0].Draw(shader,false);
 
 		//Render Fins
@@ -630,6 +633,9 @@ void Renderer::render_update()
 			finShader.SetMat4("proj", proj);
 			finShader.SetMat4("view", m_cam.ViewMatrix);
 			finShader.SetVec3("Eye", vec3(glm::inverse(models[0].transform.M2W) * vec4(m_cam.camPos, 1)));
+			finShader.SetMat4("MVP", proj * m_cam.ViewMatrix * models[0].transform.M2W);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, colorTexture);
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, finTexture);
 			glActiveTexture(GL_TEXTURE2);
@@ -660,6 +666,8 @@ void Renderer::render_update()
 		furShader.SetMat4("view", m_cam.ViewMatrix);
 		furShader.SetVec3("Eye", vec3(glm::inverse(models[0].transform.M2W) * vec4(m_cam.camPos,1)));
 		furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f,1))));
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorTexture);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
 		glActiveTexture(GL_TEXTURE2);
@@ -1424,7 +1432,7 @@ void Renderer::LoadFur()
 
 	TextureFromFile("./data/FurTexture/PNG/FurTextureFin.png", finTexture);
 	TextureFromFile("./data/FurTexture/PNG/FurTextureOffsetFin.png", finOffset);
-
+	TextureFromFile("./data/FurTexture/catColor.png", colorTexture);
 
 }
 

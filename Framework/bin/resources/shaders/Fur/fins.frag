@@ -22,5 +22,5 @@ void main()
 
 	color.a = finOpacity.a * out_opacity;
 
-	FragColor = vec4(0,0,0,1);
+	FragColor = color;
 }

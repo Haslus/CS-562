@@ -41,6 +41,7 @@ private:
 
 	//Furry
 	void LoadFur();
+	unsigned int colorTexture;
 	std::vector<unsigned int> furTexture;
 	std::vector<unsigned int> furTextureOffset;
 	Shader furShader;

@@ -112,12 +112,12 @@ void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 {
 	//Set textures
 
-	glActiveTexture(GL_TEXTURE0);
-
-	std::string tex_name = textures[0].m_type;
-
-	shader.SetInt(tex_name, 0);
-	glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
+	//glActiveTexture(GL_TEXTURE0);
+	//
+	//std::string tex_name = textures[0].m_type;
+	//
+	//shader.SetInt(tex_name, 0);
+	//glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
 
 	
 
@@ -245,7 +245,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		if (mesh->mTextureCoords[0])
 		{
 			texcoord.x = mesh->mTextureCoords[0][i].x;
-			texcoord.y = mesh->mTextureCoords[0][i].y;
+			texcoord.y = 1 - mesh->mTextureCoords[0][i].y;
 		}
 		//Store texture coordinates
 		vertex.m_texcoords = texcoord;

@@ -17,5 +17,5 @@ void main()
 {
 	vert_TexCoords = aTexCoords;
 	vert_Normal = aNormal;
-	gl_Position = proj * view * model * vec4(aPosition,1);
+	gl_Position = vec4(aPosition,1);
 }
