@@ -2,11 +2,11 @@
     "objects": 
     [
         {
-            "mesh": "./data/catOBJ.obj.",
+            "mesh": "./data/terrain.obj.",
             "translation": 
             {
                 "x": 0.0,
-                "y": -10.0,
+                "y": 0.0,
                 "z": 0.0
             },
             "rotate": 
@@ -17,9 +17,9 @@
             },
             "scale": 
             {
-                "x": 1.0,
-                "y": 1.0,
-                "z": 1.0
+                "x": 10.0,
+                "y": 10.0,
+                "z": 10.0
             }
 
         }

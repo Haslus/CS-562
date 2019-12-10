@@ -2,7 +2,7 @@
     "objects": 
     [
         {
-            "mesh": "./data/catLarge.x.",
+            "mesh": "./data/catOBJ.obj.",
             "translation": 
             {
                 "x": 0.0,

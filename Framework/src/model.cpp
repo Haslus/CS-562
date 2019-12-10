@@ -44,6 +44,38 @@ unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, co
 		}
 	}
 	return index3;
+	//If we are here, we didn't find a valid index
+	unsigned int closest_idx = -1;
+	glm::vec3 edgeP = (glm::vec3(mesh.mVertices[index2].x, mesh.mVertices[index2].y, mesh.mVertices[index2].z)
+		- glm::vec3(mesh.mVertices[index1].x, mesh.mVertices[index1].y, mesh.mVertices[index1].z)) / 2.f;
+
+	const float threshold = 0.005;
+	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) 
+	{
+		unsigned int*& indices = mesh.mFaces[i].mIndices;
+
+		for (int j = 0; j < 3; j++)
+		{
+			if (indices[j] == index1 || indices[j] == index2 || indices[j] == index3)
+				continue;
+
+			float current_distance = glm::length(glm::vec3(mesh.mVertices[indices[j]].x, mesh.mVertices[indices[j]].y, mesh.mVertices[indices[j]].z) 
+				- edgeP);
+
+			float old_distance = closest_idx == -1 ? 10000.f : glm::length(glm::vec3(mesh.mVertices[closest_idx].x, mesh.mVertices[closest_idx].y, mesh.mVertices[closest_idx].z)
+				- edgeP);
+
+			if ((current_distance - threshold) < old_distance)
+			{
+				closest_idx = indices[j];
+			}
+		}
+		
+	}
+	if (closest_idx == -1)
+		return closest_idx;
+
+	return closest_idx;
 }
 
 /**
@@ -245,7 +277,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		if (mesh->mTextureCoords[0])
 		{
 			texcoord.x = mesh->mTextureCoords[0][i].x;
-			texcoord.y = 1 - mesh->mTextureCoords[0][i].y;
+			texcoord.y = mesh->mTextureCoords[0][i].y;
 		}
 		//Store texture coordinates
 		vertex.m_texcoords = texcoord;
@@ -262,45 +294,6 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 
 	}
 
-	//Store indices as lines
-	std::map<glm::vec3, unsigned int, CompareVectors> m_posMap;
-	std::vector<Face> m_uniqueFaces;
-	std::map<Edge, Neighbors, CompareEdges> m_indexMap;
-	std::vector<unsigned int> triadj_indices;
-	// Step 1 - find the two triangles that share every edge
-	for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-		const aiFace& Face = mesh->mFaces[i];
-
-		Edge e1(Face.mIndices[0], Face.mIndices[1]);
-		Edge e2(Face.mIndices[1], Face.mIndices[2]);
-		Edge e3(Face.mIndices[2], Face.mIndices[0]);
-
-		m_indexMap[e1].AddNeigbor(i);
-		m_indexMap[e2].AddNeigbor(i);
-		m_indexMap[e3].AddNeigbor(i);
-	}
-
-	// Step 2 - build the index buffer with the adjacency info
-	for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-		const aiFace& Face = mesh->mFaces[i];
-
-		for (unsigned int j = 0; j < 3; j++) {
-			Edge e(Face.mIndices[j], Face.mIndices[(j + 1) % 3]);
-			assert(m_indexMap.find(e) != m_indexMap.end());
-			Neighbors n = m_indexMap[e];
-			unsigned int OtherTri = n.GetOther(i);
-
-			if (OtherTri == -1)
-				OtherTri = 0;
-
-			const aiFace& OtherFace = mesh->mFaces[OtherTri];
-			unsigned int OppositeIndex = GetOppositeIndex(OtherFace, e);
-
-			triadj_indices.push_back(Face.mIndices[j]);
-			triadj_indices.push_back(OppositeIndex);
-		}
-	}
-
 	//Now we havbe triangle adjacency
 
 	int numTriangles = mesh->mNumFaces;
@@ -308,21 +301,14 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 
 	int numVertices = vertices.size();
 
-	std::vector<std::vector<lineAdjData>> candidates;
-
-	for (int i = 0; i < numVertices; i++)
-	{
-		std::vector<lineAdjData> laV;
-		laV.reserve(10);
-		candidates.push_back(laV);
-	}
 
 	std::vector<unsigned int> true_idx;
+
 	true_idx.resize(6 * mesh->mNumFaces);
 	int index_off = 0;
 	for (int i = 0; i < mesh->mNumFaces; i++, index_off += 6)
 	{
-		true_idx[index_off] = mesh->mFaces[i].mIndices[0];
+		true_idx[index_off    ] = mesh->mFaces[i].mIndices[0];
 		true_idx[index_off + 2] = mesh->mFaces[i].mIndices[1];
 		true_idx[index_off + 4] = mesh->mFaces[i].mIndices[2];
 		true_idx[index_off + 1] = findAdjacentIndex(*mesh, true_idx[index_off + 0], true_idx[index_off + 2], true_idx[index_off + 4]);
@@ -330,82 +316,6 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		true_idx[index_off + 5] = findAdjacentIndex(*mesh, true_idx[index_off + 4], true_idx[index_off + 0], true_idx[index_off + 2]);
 	}
 
-	bool found; 
-	int index;
-	int triadj_index = 0;
-	for (int i = 0; i < numTriangles; i++, triadj_index += 6)
-	{
-		found = false;
-		lineAdjData l1(true_idx[triadj_index], true_idx[triadj_index + 2],
-			true_idx[triadj_index + 1], true_idx[triadj_index + 4]);
-		index = glm::min(l1.vertex1, l1.vertex2);
-
-		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
-		{
-			if (l1 == candidates.at(index).at(j))
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			adj.push_back(l1);
-			candidates.at(index).push_back(l1);
-		}
-
-		found = false;
-		lineAdjData l2(true_idx[triadj_index + 2], true_idx[triadj_index + 4],
-			true_idx[triadj_index + 3], true_idx[triadj_index + 0]);
-		index = glm::min(l2.vertex1, l2.vertex2);
-
-		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
-		{
-			if (l2 == candidates.at(index).at(j))
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			adj.push_back(l2);
-			candidates.at(index).push_back(l2);
-		}
-
-		found = false;
-		lineAdjData l3(true_idx[triadj_index + 4], true_idx[triadj_index],
-			true_idx[triadj_index + 2], true_idx[triadj_index + 5]);
-		index = glm::min(l3.vertex1, l3.vertex2);
-
-		for (unsigned int j = 0; j < candidates.at(index).size(); j++)
-		{
-			if (l3 == candidates.at(index).at(j))
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			adj.push_back(l3);
-			candidates.at(index).push_back(l3);
-		}
-	}
-	std::vector <unsigned int>debug(200000,0);
-	std::vector<unsigned int> linesadj_indices;
-	for (unsigned int i = 0; i < adj.size(); i++)
-	{
-		linesadj_indices.push_back(adj.at(i).vertex1);
-		linesadj_indices.push_back(adj.at(i).vertex2);
-		linesadj_indices.push_back(adj.at(i).opposite1);
-		linesadj_indices.push_back(adj.at(i).opposite2);
-
-
-	}
 
 	
 
@@ -428,7 +338,8 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		textures_loaded.push_back(texture);
 	}
 	
-	
+	std::vector<unsigned int> linesadj_indices;
+
 	return new Mesh(vertices, true_idx, linesadj_indices, textures);
 }
 

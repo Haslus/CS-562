@@ -22,5 +22,5 @@ void main()
 
 	color.a = finOpacity.a * out_opacity;
 
-	FragColor =color.xxxa;
+	FragColor = color;
 }

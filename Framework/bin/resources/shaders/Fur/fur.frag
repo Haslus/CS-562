@@ -73,6 +73,6 @@ void main()
 	//float shadow = (float(shellNumber) / float(numShells)) * (1-minShadow) + minShadow;
 	//outputColor.xyz *= shadow;
 
-	FragColor = outputColor;
+	FragColor = outputColor.xxxa;
 
 }

@@ -674,9 +674,9 @@ void Renderer::render_update()
 		glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
 
 		furShader.SetVec3("combVector", vec3(0,0,1));
-		furShader.SetFloat("combStrength", 0.3f);
+		furShader.SetFloat("combStrength", 0.1f);
 		furShader.SetInt("numShells",15);
-		furShader.SetFloat("shellIncrement",0.2f);
+		furShader.SetFloat("shellIncrement",0.005f);
 
 		for (int i = 1; i <= numShells; i++)
 		{	
@@ -1432,7 +1432,7 @@ void Renderer::LoadFur()
 
 	TextureFromFile("./data/FurTexture/PNG/FurTextureFin.png", finTexture);
 	TextureFromFile("./data/FurTexture/PNG/FurTextureOffsetFin.png", finOffset);
-	TextureFromFile("./data/FurTexture/catColor.png", colorTexture);
+	TextureFromFile("./data/FurTexture/PNG/furTexColor.png", colorTexture);
 
 }
 
