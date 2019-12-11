@@ -32,52 +32,25 @@ std::vector<Texture> textures_loaded;
 
 unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, const unsigned int index2, const unsigned int index3) {
 
-	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) {
+	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) 
+	{
 		unsigned int*& indices = mesh.mFaces[i].mIndices;
-		for (int edge = 0; edge < 3; ++edge) { //iterate all edges of the face
-			unsigned int v1 = indices[edge]; //first edge index
-			unsigned int v2 = indices[(edge + 1) % 3]; //second edge index
-			unsigned int vOpp = indices[(edge + 2) % 3]; //index of opposite vertex
-			//if the edge matches the search edge and the opposite vertex does not match
+		for (int edge = 0; edge < 3; ++edge) 
+		{ //iterate all edges of the face
+			unsigned int v1 = indices[edge]; 
+			unsigned int v2 = indices[(edge + 1) % 3]; 
+			unsigned int vOpp = indices[(edge + 2) % 3]; 
+			
 			if (((mesh.mVertices[v1] == mesh.mVertices[index1] && mesh.mVertices[v2] == mesh.mVertices[index2]) || 
 				(mesh.mVertices[v2] == mesh.mVertices[index1] && mesh.mVertices[v1] == mesh.mVertices[index2])) 
 				&& mesh.mVertices[vOpp] != mesh.mVertices[index3])
 				return vOpp; //we have found the adjacent vertex
 		}
 	}
+
+	//If it doesn't have an adjacent it's degenerate
 	return index3;
-	//If we are here, we didn't find a valid index
-	unsigned int closest_idx = -1;
-	glm::vec3 edgeP = (glm::vec3(mesh.mVertices[index2].x, mesh.mVertices[index2].y, mesh.mVertices[index2].z)
-		- glm::vec3(mesh.mVertices[index1].x, mesh.mVertices[index1].y, mesh.mVertices[index1].z)) / 2.f;
 
-	const float threshold = 0.000;
-	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) 
-	{
-		unsigned int*& indices = mesh.mFaces[i].mIndices;
-
-		for (int j = 0; j < 3; j++)
-		{
-			if (indices[j] == index1 || indices[j] == index2 || indices[j] == index3)
-				continue;
-
-			float current_distance = glm::length(glm::vec3(mesh.mVertices[indices[j]].x, mesh.mVertices[indices[j]].y, mesh.mVertices[indices[j]].z) 
-				- edgeP);
-
-			float old_distance = closest_idx == -1 ? 10000.f : glm::length(glm::vec3(mesh.mVertices[closest_idx].x, mesh.mVertices[closest_idx].y, mesh.mVertices[closest_idx].z)
-				- edgeP);
-
-			if ((current_distance - threshold) <= old_distance)
-			{
-				closest_idx = indices[j];
-			}
-		}
-		
-	}
-	if (closest_idx == -1)
-		return closest_idx;
-
-	return closest_idx;
 }
 
 /**
@@ -92,12 +65,11 @@ Mesh::~Mesh()
 /**
 * @brief 	Custom constructor for the Mesh, also creates the data for Rendering
 */
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> tri_indices, std::vector<unsigned int> line_indices,
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> tri_indices,
 	std::vector<Texture> textures)
 {
 	this->vertices = vertices;
 	this->triangle_indices = tri_indices;
-	this->lineadj_indices = line_indices;
 	this->textures = textures;
 
 	SetupMesh();
@@ -144,16 +116,6 @@ void Mesh::SetupMesh()
 */
 void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 {
-	//Set textures
-
-	//glActiveTexture(GL_TEXTURE0);
-	//
-	//std::string tex_name = textures[0].m_type;
-	//
-	//shader.SetInt(tex_name, 0);
-	//glBindTexture(GL_TEXTURE_2D, textures[0].m_id);
-
-	
 
 	if (wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -161,15 +123,9 @@ void Mesh::Draw(Shader shader, bool wireframe, bool fins)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glBindVertexArray(VAO);
-	if (fins)
-	{
-		glDrawElements(GL_TRIANGLES_ADJACENCY, static_cast<GLsizei>(triangle_indices.size()), GL_UNSIGNED_INT, 0);
-	}
-	else
-	{
 
-		glDrawElements(GL_TRIANGLES_ADJACENCY, static_cast<GLsizei>(triangle_indices.size()), GL_UNSIGNED_INT, 0);
-	}
+	glDrawElements(GL_TRIANGLES_ADJACENCY, static_cast<GLsizei>(triangle_indices.size()), GL_UNSIGNED_INT, 0);
+	
 	glBindVertexArray(0);
 
 }
@@ -296,14 +252,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 
 	}
 
-	//Now we havbe triangle adjacency
-
-	int numTriangles = mesh->mNumFaces;
-	std::vector<lineAdjData> adj;
-
-	int numVertices = vertices.size();
-
-
+	//Build triangle adjacency list
 	std::vector<unsigned int> true_idx;
 
 	true_idx.resize(6 * mesh->mNumFaces);
@@ -317,32 +266,9 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 		true_idx[index_off + 3] = findAdjacentIndex(*mesh, true_idx[index_off + 2], true_idx[index_off + 4], true_idx[index_off + 0]);
 		true_idx[index_off + 5] = findAdjacentIndex(*mesh, true_idx[index_off + 4], true_idx[index_off + 0], true_idx[index_off + 2]);
 	}
-
-
 	
 
-
-	//Process material
-	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-
-	//Load Diffuse, Specular and Normal textures
-
-	bool skip = false;
-	aiString str;
-	material->GetTexture(aiTextureType_DIFFUSE, 0, &str);
-
-	Texture texture;
-	if (TextureFromFile(str.C_Str(), texture.m_id))
-	{
-		texture.m_type = "Diffuse";
-		texture.m_path = str.C_Str();
-		textures.push_back(texture);
-		textures_loaded.push_back(texture);
-	}
-	
-	std::vector<unsigned int> linesadj_indices;
-
-	return new Mesh(vertices, true_idx, linesadj_indices, textures);
+	return new Mesh(vertices, true_idx, textures);
 }
 
 /**
@@ -465,96 +391,4 @@ void Decal::Draw(Shader shader, DrawMode drawMode)
 	default:
 		break;
 	}
-}
-
-GLuint loadDDS(const char * imagepath, int & _width, int & _height) 
-{
-
-	unsigned char header[124];
-
-	FILE *fp;
-
-	/* try to open the file */
-	fp = fopen(imagepath, "rb");
-	if (fp == NULL)
-		return 0;
-
-	/* verify the type of file */
-	char filecode[4];
-	fread(filecode, 1, 4, fp);
-	if (strncmp(filecode, "DDS ", 4) != 0) {
-		fclose(fp);
-		return 0;
-	}
-
-	/* get the surface desc */
-	fread(&header, 124, 1, fp);
-
-	unsigned int height = *(unsigned int*)&(header[8]);
-	unsigned int width = *(unsigned int*)&(header[12]);
-	unsigned int linearSize = *(unsigned int*)&(header[16]);
-	unsigned int mipMapCount = *(unsigned int*)&(header[24]);
-	unsigned int fourCC = *(unsigned int*)&(header[80]);
-
-	_width = width;
-	_height = height;
-
-	unsigned char * buffer;
-	unsigned int bufsize;
-	/* how big is it going to be including all mipmaps? */
-	bufsize = mipMapCount > 1 ? linearSize * 2 : linearSize;
-	buffer = (unsigned char*)malloc(bufsize * sizeof(unsigned char));
-	fread(buffer, 1, bufsize, fp);
-	/* close the file pointer */
-	fclose(fp);
-	
-	unsigned int components = (fourCC == FOURCC_DXT1) ? 3 : 4;
-	unsigned int format;
-	switch (fourCC)
-	{
-	case FOURCC_DXT1:
-		format = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-		break;
-	case FOURCC_DXT3:
-		format = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-		break;
-	case FOURCC_DXT5:
-		format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-		break;
-	default:
-		free(buffer);
-		return 0;
-	}
-
-	// Create one OpenGL texture
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-
-	// "Bind" the newly created texture : all future texture functions will modify this texture
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	unsigned int blockSize = (format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT) ? 8 : 16;
-	unsigned int offset = 0;
-
-	/* load the mipmaps */
-	for (unsigned int level = 0; level < mipMapCount && (width || height); ++level)
-	{
-		unsigned int size = ((width + 3) / 4)*((height + 3) / 4)*blockSize;
-		glCompressedTexImage2D(GL_TEXTURE_2D, level, format, width, height,
-			0, size, buffer + offset);
-
-		offset += size;
-		width /= 2;
-		height /= 2;
-
-		// Deal with Non-Power-Of-Two textures. This code is not included in the webpage to reduce clutter.
-		if (width < 1) width = 1;
-		if (height < 1) height = 1;
-
-	}
-
-	free(buffer);
-
-	return textureID;
 }
