@@ -9,8 +9,8 @@ uniform float maxOpacity = 0.9;
 uniform float finThreshold = 0.25;
 uniform float combStrength = 0.3;
 uniform vec3 combVector = vec3(0,0,1);
-uniform float numShells = 5;
-uniform float shellIncrement = 0.2;
+uniform float numShells = 15;
+uniform float shellIncrement = 0.005;
 
 const float EdgeWidth = 0.005f; // Width of sil. edge in clip cds.
 const float PctExtend = 0.05f; // Percentage to extend quad
@@ -129,25 +129,19 @@ void main()
     vec3 p5 = gl_in[5].gl_Position.xyz;
 
 	vec3 eyeVec = normalize( Eye - p0 );
-	vec3 eyeVec1 = normalize( Eye - p1 );
-	vec3 eyeVec2 = normalize( Eye - p3 );
-	vec3 eyeVec3 = normalize( Eye - p5 );
+	
+	
 	// Compute face normals
 	vec4 nT = compute_face_normal(p0,p2,p4);
 	float eyeDotnT = dot(nT.xyz,eyeVec);
 
 
-	vec4 n0 = compute_face_normal(p0,p1,p2);
-	vec4 n1 = compute_face_normal(p2,p3,p4);
-	vec4 n2 = compute_face_normal(p4,p5,p0);
-
-	float eyeDotn0 = dot(n0.xyz,eyeVec1);
-	float eyeDotn1 = dot(n1.xyz,eyeVec2);
-	float eyeDotn2 = dot(n2.xyz,eyeVec3);
-
 	// Create silhouette if triangle is back facing
 	if(p1 != p0 && p1 != p2 && p1 != p4)
 	{
+		vec3 eyeVec1 = normalize( Eye - p0 );
+		vec4 n0 = compute_face_normal(p0,p1,p2);
+		float eyeDotn0 = dot(n0.xyz,eyeVec1);
 
 			if(eyeDotn0 * eyeDotnT <= 0)
 				create_silhouette(0,2,maxOpacity);
@@ -157,9 +151,12 @@ void main()
 		
 		
 	}
-	
+
 	if(p3 != p4 && p3 != p2 && p3 != p0)
 	{
+		vec3 eyeVec2 = normalize( Eye - p2 );
+		vec4 n1 = compute_face_normal(p2,p3,p4);
+		float eyeDotn1 = dot(n1.xyz,eyeVec2);
 
 			if(eyeDotn1 * eyeDotnT <= 0)
 				create_silhouette(2,4,maxOpacity);
@@ -169,8 +166,11 @@ void main()
 		
 		
 	}
-	if(p5 != p4 && p5 != p2 && p5 != p0)
+	if(p5 != p4 && p5 != p0 && p5 != p2)
 	{
+		vec3 eyeVec3 = normalize( Eye - p4 );
+		vec4 n2 = compute_face_normal(p4,p5,p0);
+		float eyeDotn2 = dot(n2.xyz,eyeVec3);
 
 		if(eyeDotn2 * eyeDotnT <= 0)
 			create_silhouette(4,0,maxOpacity);

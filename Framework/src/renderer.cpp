@@ -1432,7 +1432,7 @@ void Renderer::LoadFur()
 
 	TextureFromFile("./data/FurTexture/PNG/FurTextureFin.png", finTexture);
 	TextureFromFile("./data/FurTexture/PNG/FurTextureOffsetFin.png", finOffset);
-	TextureFromFile("./data/FurTexture/PNG/furTexColor.png", colorTexture);
+	TextureFromFile("./data/FurTexture/catColor.png", colorTexture);
 
 }
 

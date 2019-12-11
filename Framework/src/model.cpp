@@ -39,7 +39,9 @@ unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, co
 			unsigned int v2 = indices[(edge + 1) % 3]; //second edge index
 			unsigned int vOpp = indices[(edge + 2) % 3]; //index of opposite vertex
 			//if the edge matches the search edge and the opposite vertex does not match
-			if (((v1 == index1 && v2 == index2) || (v2 == index1 && v1 == index2)) && vOpp != index3)
+			if (((mesh.mVertices[v1] == mesh.mVertices[index1] && mesh.mVertices[v2] == mesh.mVertices[index2]) || 
+				(mesh.mVertices[v2] == mesh.mVertices[index1] && mesh.mVertices[v1] == mesh.mVertices[index2])) 
+				&& mesh.mVertices[vOpp] != mesh.mVertices[index3])
 				return vOpp; //we have found the adjacent vertex
 		}
 	}
@@ -49,7 +51,7 @@ unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, co
 	glm::vec3 edgeP = (glm::vec3(mesh.mVertices[index2].x, mesh.mVertices[index2].y, mesh.mVertices[index2].z)
 		- glm::vec3(mesh.mVertices[index1].x, mesh.mVertices[index1].y, mesh.mVertices[index1].z)) / 2.f;
 
-	const float threshold = 0.005;
+	const float threshold = 0.000;
 	for (unsigned int i = 0; i < mesh.mNumFaces; ++i) 
 	{
 		unsigned int*& indices = mesh.mFaces[i].mIndices;
@@ -65,7 +67,7 @@ unsigned int findAdjacentIndex(const aiMesh& mesh, const unsigned int index1, co
 			float old_distance = closest_idx == -1 ? 10000.f : glm::length(glm::vec3(mesh.mVertices[closest_idx].x, mesh.mVertices[closest_idx].y, mesh.mVertices[closest_idx].z)
 				- edgeP);
 
-			if ((current_distance - threshold) < old_distance)
+			if ((current_distance - threshold) <= old_distance)
 			{
 				closest_idx = indices[j];
 			}

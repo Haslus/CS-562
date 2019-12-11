@@ -10,7 +10,7 @@ uniform float finThreshold = 0.25;
 uniform float combStrength = 0.3;
 uniform vec3 combVector = vec3(0,0,1);
 uniform float numShells = 15;
-uniform float shellIncrement = 0.005;
+uniform float shellIncrement = 0.2;
 
 const float EdgeWidth = 0.005f; // Width of sil. edge in clip cds.
 const float PctExtend = 0.05f; // Percentage to extend quad
