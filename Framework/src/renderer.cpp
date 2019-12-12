@@ -122,8 +122,8 @@ void Renderer::renderImGUI()
 	ImGui::Checkbox("Show Fins", &showFins);
 
 	ImGui::SliderInt("Number of Shells", &numShells, 1, 15);
-	ImGui::SliderFloat("Comb Strength", &combStrength, 0.1f, 100.f, "%.6");
-	ImGui::SliderFloat("Shell Increment", &shellIncrement, 0.0001f, 1.f,"%.6");
+	ImGui::SliderFloat("Comb Strength", &combStrength, 0.1f, 100.f);
+	ImGui::SliderFloat("Shell Increment", &shellIncrement, 0.0001f, 1.f);
 	ImGui::SliderFloat("Max Opacity (For Fins)", &maxOpacity, 0.1f, 1.f);
 	ImGui::InputFloat3("Comb Vector", &combVector.x);
 
