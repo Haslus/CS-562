@@ -58,6 +58,7 @@ void Transform::AddRotation(glm::vec3 newRot)
 void Transform::SetPosition(glm::vec3 newPos)
 {
 	Position = newPos;
+	RecalculateM2W();
 }
 /**
 * @brief 	Set scale

@@ -22,45 +22,6 @@ out float out_opacity;
 
 layout(binding = 0) uniform sampler2D Diffuse;
 
-void MakeFin(int idx1, int idx2)
-{
-
-	float opacity = maxOpacity;
-
-	vec2 texcoord = {1,0.1};
-	float furLength[2];
-	vec4 color = texture(Diffuse,vert_TexCoords[0]);
-	furLength[0] = color.a;
-	color = texture(Diffuse,vert_TexCoords[1]);
-	furLength[1] = color.a;
-		
-
-	for(int i = 0; i < 2; i++)
-	{
-		textureMesh = vert_TexCoords[1];
-		out_opacity = opacity;
-		gl_Position  = (gl_in[idx2].gl_Position + i * vec4(normalize(vert_Normal[idx2]) +
-		combStrength*combVector,0)*numShells*shellIncrement*furLength[0]);
-		textureFin = vec2(0,texcoord[i]);
-		EmitVertex();
-	}
-
-		
-
-	for(int i = 0; i < 2; i++)
-	{
-		textureMesh = vert_TexCoords[0];
-		out_opacity = opacity;
-		gl_Position  = (gl_in[idx1].gl_Position + i * vec4(normalize(vert_Normal[idx1]) +
-		combStrength*combVector,0)*numShells*shellIncrement*furLength[1]);
-		textureFin  = vec2(1,texcoord[i]);
-		EmitVertex();
-	}
-
-	EndPrimitive();
-	
-}
-
 vec4 compute_face_normal(vec3 p0, vec3 p1, vec3 p2)
 {
 	vec3 v1 = p1-p0;

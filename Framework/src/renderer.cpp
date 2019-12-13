@@ -122,8 +122,8 @@ void Renderer::renderImGUI()
 	ImGui::Checkbox("Show Fins", &showFins);
 
 	ImGui::SliderInt("Number of Shells", &numShells, 1, 15);
-	ImGui::SliderFloat("Comb Strength", &combStrength, 0.1f, 100.f);
-	ImGui::SliderFloat("Shell Increment", &shellIncrement, 0.0001f, 1.f);
+	ImGui::DragFloat("Comb Strength", &combStrength, 0.1f, 0.1f,100.f);
+	ImGui::DragFloat("Shell Increment", &shellIncrement, 0.001f, 0.0001f,100.f);
 	ImGui::SliderFloat("Max Opacity (For Fins)", &maxOpacity, 0.1f, 1.f);
 	ImGui::InputFloat3("Comb Vector", &combVector.x);
 
@@ -134,6 +134,8 @@ void Renderer::renderImGUI()
 	const char * items2[9] = { "cat","grass","white fur", "leopard fur", "brown fur",
 	"doted fur", "stripped fur", "white stripped fur", "purple fur" };
 	ImGui::Combo("Texture", &currentTexture, items2, 9);
+
+	ImGui::Checkbox("Show Materials", &showSpheres);
 	ImGui::End();
 
 
@@ -197,6 +199,19 @@ void Renderer::render_initialize()
 	//Furry Stuff
 	LoadFur();
 	
+
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(0,0,0));
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(75, 0, 0));
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(150, 0, 0));
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(-75, 0, 0));
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(-150, 0, 0));
+
+
 }
 
 /**
@@ -217,99 +232,202 @@ void Renderer::render_update()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glDisable(GL_BLEND);
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-
-		//Render Mesh
-		
-		shader.Use();
-		shader.SetMat4("proj", proj);
-		shader.SetMat4("view", m_cam.ViewMatrix);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
-		
-		models[currentModel].Draw(shader,false);
-
-		//Render Fins
-		if (showFins)
+		if (showSpheres)
 		{
-			glEnable(GL_BLEND);
-			glBlendEquation(GL_FUNC_ADD);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glDisable(GL_CULL_FACE);
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-			glDepthFunc(GL_LESS);
+			for (int i = 0; i < 5; i++)
+			{
+				glDisable(GL_BLEND);
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+				glEnable(GL_DEPTH_TEST);
+				glDepthMask(GL_TRUE);
+				glDepthFunc(GL_LESS);
 
-			finShader.Use();
-			finShader.SetMat4("proj", proj);
-			finShader.SetMat4("view", m_cam.ViewMatrix);
-			finShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
-			finShader.SetMat4("MVP", proj * m_cam.ViewMatrix * models[currentModel].transform.M2W);
-			finShader.SetVec3("combVector", combVector);
-			finShader.SetFloat("combStrength", combStrength);
-			finShader.SetInt("numShells", numShells);
-			finShader.SetFloat("shellIncrement", shellIncrement);
-			finShader.SetFloat("maxOpacity", maxOpacity);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, finTexture);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, finOffset);
+				//Render Mesh
 
-			models[currentModel].Draw(finShader, true);
+				shader.Use();
+				shader.SetMat4("proj", proj);
+				shader.SetMat4("view", m_cam.ViewMatrix);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, textureArray[i + 4]);
+
+				models[3 + i].Draw(shader, false);
+
+				//Render Fins
+				if (showFins)
+				{
+					glEnable(GL_BLEND);
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glDisable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_LESS);
+
+					finShader.Use();
+					finShader.SetMat4("proj", proj);
+					finShader.SetMat4("view", m_cam.ViewMatrix);
+					finShader.SetVec3("Eye", vec3(glm::inverse(models[3 + i].transform.M2W) * vec4(m_cam.camPos, 1)));
+					finShader.SetMat4("MVP", proj * m_cam.ViewMatrix * models[3 + i].transform.M2W);
+					finShader.SetVec3("combVector", combVector);
+					finShader.SetFloat("combStrength", combStrength);
+					finShader.SetInt("numShells", numShells);
+					finShader.SetFloat("shellIncrement", shellIncrement);
+					finShader.SetFloat("maxOpacity", maxOpacity);
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, textureArray[i + 4]);
+					glActiveTexture(GL_TEXTURE1);
+					glBindTexture(GL_TEXTURE_2D, finTexture);
+					glActiveTexture(GL_TEXTURE2);
+					glBindTexture(GL_TEXTURE_2D, finOffset);
+
+					models[3 + i].Draw(finShader, true);
+
+				}
+
+
+				//Render Shells
+				if (showShells)
+				{
+					//glDepthMask(GL_FALSE);
+					glEnable(GL_BLEND);
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+					glEnable(GL_CULL_FACE);
+					glCullFace(GL_BACK);
+
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_LESS);
+					//glBlendEquation(GL_FUNC_ADD);
+					//glBlendFunc(GL_ONE, GL_ONE);
+					//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					furShader.Use();
+					furShader.SetMat4("proj", proj);
+					furShader.SetMat4("view", m_cam.ViewMatrix);
+					furShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
+					//furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f, 1))));
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, textureArray[i + 4]);
+					glActiveTexture(GL_TEXTURE1);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
+					glActiveTexture(GL_TEXTURE2);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
+
+					furShader.SetVec3("combVector", combVector);
+					furShader.SetFloat("combStrength", combStrength);
+					furShader.SetInt("numShells", numShells);
+					furShader.SetFloat("shellIncrement", shellIncrement);
+
+					for (int j = 1; j <= numShells; j++)
+					{
+						furShader.SetInt("shell", j);
+						models[3 + i].Draw(furShader);
+					}
+				}
+			}
+
 			
 		}
-
-		
-		//Render Shells
-		if (showShells)
+		else
 		{
-			//glDepthMask(GL_FALSE);
-			glEnable(GL_BLEND);
-			glBlendEquation(GL_FUNC_ADD);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+			glDisable(GL_BLEND);
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
-
 			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
 			glDepthFunc(GL_LESS);
-			//glBlendEquation(GL_FUNC_ADD);
-			//glBlendFunc(GL_ONE, GL_ONE);
-			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			furShader.Use();
-			furShader.SetMat4("proj", proj);
-			furShader.SetMat4("view", m_cam.ViewMatrix);
-			furShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
-			//furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f, 1))));
+
+			//Render Mesh
+
+			shader.Use();
+			shader.SetMat4("proj", proj);
+			shader.SetMat4("view", m_cam.ViewMatrix);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
 
-			furShader.SetVec3("combVector", combVector);
-			furShader.SetFloat("combStrength", combStrength);
-			furShader.SetInt("numShells", numShells);
-			furShader.SetFloat("shellIncrement", shellIncrement);
+			models[currentModel].Draw(shader, false);
 
-			for (int i = 1; i <= numShells; i++)
+			//Render Fins
+			if (showFins)
 			{
-				furShader.SetInt("shell", i);
-				models[currentModel].Draw(furShader);
+				glEnable(GL_BLEND);
+				glBlendEquation(GL_FUNC_ADD);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				glDisable(GL_CULL_FACE);
+				glEnable(GL_DEPTH_TEST);
+				glDepthMask(GL_FALSE);
+				glDepthFunc(GL_LESS);
+
+				finShader.Use();
+				finShader.SetMat4("proj", proj);
+				finShader.SetMat4("view", m_cam.ViewMatrix);
+				finShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
+				finShader.SetMat4("MVP", proj * m_cam.ViewMatrix * models[currentModel].transform.M2W);
+				finShader.SetVec3("combVector", combVector);
+				finShader.SetFloat("combStrength", combStrength);
+				finShader.SetInt("numShells", numShells);
+				finShader.SetFloat("shellIncrement", shellIncrement);
+				finShader.SetFloat("maxOpacity", maxOpacity);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, finTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, finOffset);
+
+				models[currentModel].Draw(finShader, true);
+
 			}
 
 
+			//Render Shells
+			if (showShells)
+			{
+				//glDepthMask(GL_FALSE);
+				glEnable(GL_BLEND);
+				glBlendEquation(GL_FUNC_ADD);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+
+				glEnable(GL_DEPTH_TEST);
+				glDepthMask(GL_FALSE);
+				glDepthFunc(GL_LESS);
+				//glBlendEquation(GL_FUNC_ADD);
+				//glBlendFunc(GL_ONE, GL_ONE);
+				//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				furShader.Use();
+				furShader.SetMat4("proj", proj);
+				furShader.SetMat4("view", m_cam.ViewMatrix);
+				furShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
+				//furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f, 1))));
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureArray);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D_ARRAY, furTextureOffsetArray);
+
+				furShader.SetVec3("combVector", combVector);
+				furShader.SetFloat("combStrength", combStrength);
+				furShader.SetInt("numShells", numShells);
+				furShader.SetFloat("shellIncrement", shellIncrement);
+
+				for (int i = 1; i <= numShells; i++)
+				{
+					furShader.SetInt("shell", i);
+					models[currentModel].Draw(furShader);
+				}
+
+
+
+
+			}
 		}
+
+		
 		
 		updateImGUI();
 		glfwSwapBuffers(window);

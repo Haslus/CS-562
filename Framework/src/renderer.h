@@ -47,24 +47,25 @@ private:
 	Shader furShader;
 	unsigned int furTextureArray;
 	unsigned int furTextureOffsetArray;
-	bool showShells = true;
+	bool showShells = false;
 
-	bool showFins = true;
+	bool showFins = false;
 	Shader finShader;
 	unsigned int finTexture;
 	unsigned int finOffset;
 
 	//Shader variables
 	vec3 combVector = vec3(0,0,1);
-	float combStrength = 0;
+	float combStrength = 0.1f;
 	int numShells = 1;
-	float shellIncrement = 0.0001;
+	float shellIncrement = 0.01f;
 	float maxOpacity = 0.9f;
 
 	//
 
 	int currentModel = 0;
 	int currentTexture = 0;
+	bool showSpheres = false;
 
 	std::vector<unsigned int> textureArray;
 
