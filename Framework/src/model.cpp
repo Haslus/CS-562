@@ -24,8 +24,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "glsc2ext.h"
-
 #include <assimp/cimport.h>
 
 std::vector<Texture> textures_loaded;
@@ -257,7 +255,7 @@ Mesh* Model::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 
 	true_idx.resize(6 * mesh->mNumFaces);
 	int index_off = 0;
-	for (int i = 0; i < mesh->mNumFaces; i++, index_off += 6)
+	for (unsigned i = 0; i < mesh->mNumFaces; i++, index_off += 6)
 	{
 		true_idx[index_off    ] = mesh->mFaces[i].mIndices[0];
 		true_idx[index_off + 2] = mesh->mFaces[i].mIndices[1];

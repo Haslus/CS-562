@@ -188,8 +188,6 @@
     <ClInclude Include="dependencies\src\imgui\imstb_rectpack.h" />
     <ClInclude Include="dependencies\src\imgui\imstb_textedit.h" />
     <ClInclude Include="dependencies\src\imgui\imstb_truetype.h" />
-    <ClInclude Include="src\dds.h" />
-    <ClInclude Include="src\glsc2ext.h" />
     <ClInclude Include="src\json.hpp" />
     <ClInclude Include="src\light.h" />
     <ClInclude Include="src\model.h" />
@@ -210,7 +208,6 @@
     <ClCompile Include="dependencies\src\imgui\imgui_impl_glfw.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="dependencies\src\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\dds.c" />
     <ClCompile Include="src\light.cpp" />
     <ClCompile Include="src\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

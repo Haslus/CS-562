@@ -8,9 +8,6 @@
 * @brief 	Framework
 *
 */
-#define FOURCC_DXT1 0x31545844 // Equivalent to "DXT1" in ASCII
-#define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
-#define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
 
 
 #include "pch.h"
@@ -30,8 +27,6 @@ using json = nlohmann::json;
 #include <imgui/imgui_impl_opengl3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
-
-#include "glsc2ext.h"
 
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -103,7 +98,6 @@ void Renderer::updateImGUI()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	//ImGui::ShowDemoWindow();
 	renderImGUI();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -121,11 +115,11 @@ void Renderer::renderImGUI()
 	ImGui::Checkbox("Show Shells", &showShells);
 	ImGui::Checkbox("Show Fins", &showFins);
 
-	ImGui::SliderInt("Number of Shells", &numShells, 1, 15);
-	ImGui::DragFloat("Comb Strength", &combStrength, 0.1f, 0.1f,100.f);
+	ImGui::SliderInt("Number of Shells", &numShells, 1, 16);
 	ImGui::DragFloat("Shell Increment", &shellIncrement, 0.001f, 0.0001f,100.f);
 	ImGui::SliderFloat("Max Opacity (For Fins)", &maxOpacity, 0.1f, 1.f);
 	ImGui::InputFloat3("Comb Vector", &combVector.x);
+	ImGui::DragFloat("Comb Strength", &combStrength, 0.1f, 0.1f,100.f);
 
 	
 	const char * items1[3] = {"cat","bunny","sphere"};
@@ -135,7 +129,7 @@ void Renderer::renderImGUI()
 	"doted fur", "stripped fur", "white stripped fur", "purple fur" };
 	ImGui::Combo("Texture", &currentTexture, items2, 9);
 
-	ImGui::Checkbox("Show Materials", &showSpheres);
+	ImGui::Checkbox("Show Example", &showSpheres);
 	ImGui::End();
 
 
@@ -149,7 +143,6 @@ void Renderer::exitImGUI()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-	clear();
 }
 /**
 * @brief 	Initialize the renderer
@@ -198,18 +191,18 @@ void Renderer::render_initialize()
 
 	//Furry Stuff
 	LoadFur();
-	
-
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(-150, 0, 0));
+	models.push_back(models[2]);
+	models.back().transform.SetPosition(vec3(-75, 0, 0));
 	models.push_back(models[2]);
 	models.back().transform.SetPosition(vec3(0,0,0));
 	models.push_back(models[2]);
 	models.back().transform.SetPosition(vec3(75, 0, 0));
 	models.push_back(models[2]);
 	models.back().transform.SetPosition(vec3(150, 0, 0));
-	models.push_back(models[2]);
-	models.back().transform.SetPosition(vec3(-75, 0, 0));
-	models.push_back(models[2]);
-	models.back().transform.SetPosition(vec3(-150, 0, 0));
+	
+
 
 
 }
@@ -300,14 +293,10 @@ void Renderer::render_update()
 					glEnable(GL_DEPTH_TEST);
 					glDepthMask(GL_FALSE);
 					glDepthFunc(GL_LESS);
-					//glBlendEquation(GL_FUNC_ADD);
-					//glBlendFunc(GL_ONE, GL_ONE);
-					//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 					furShader.Use();
 					furShader.SetMat4("proj", proj);
 					furShader.SetMat4("view", m_cam.ViewMatrix);
 					furShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
-					//furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f, 1))));
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, textureArray[i + 4]);
 					glActiveTexture(GL_TEXTURE1);
@@ -395,14 +384,10 @@ void Renderer::render_update()
 				glEnable(GL_DEPTH_TEST);
 				glDepthMask(GL_FALSE);
 				glDepthFunc(GL_LESS);
-				//glBlendEquation(GL_FUNC_ADD);
-				//glBlendFunc(GL_ONE, GL_ONE);
-				//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				furShader.Use();
 				furShader.SetMat4("proj", proj);
 				furShader.SetMat4("view", m_cam.ViewMatrix);
 				furShader.SetVec3("Eye", vec3(glm::inverse(models[currentModel].transform.M2W) * vec4(m_cam.camPos, 1)));
-				//furShader.SetVec3("Light", vec3(glm::inverse(models[0].transform.M2W) *  vec4((-100.0f, 300.0f, -200.0f, 1))));
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, textureArray[currentTexture]);
 				glActiveTexture(GL_TEXTURE1);
@@ -444,8 +429,6 @@ void Renderer::render_exit()
 	exitImGUI();
 	glfwDestroyWindow(window);
 	glfwTerminate();
-	clear();
-
 }
 
 /**
@@ -551,11 +534,6 @@ void Renderer::updateShaders()
 	finShader = Shader(fur);
 
 }
-void Renderer::clear()
-{
-
-
-}
 /**
 * @brief 	Read the myJSON file and build the scene
 */
@@ -632,6 +610,10 @@ void Renderer::read_JSON_Scene(const std::string & path)
 	}
 
 }
+
+/*
+	Load fur textures and additional data
+*/
 
 void Renderer::LoadFur()
 {

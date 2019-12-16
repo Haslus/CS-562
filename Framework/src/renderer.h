@@ -35,7 +35,6 @@ private:
 	void render_exit();
 	void get_input();
 	void updateShaders();
-	void clear();
 	void read_JSON(const std::string& path);
 	void read_JSON_Scene(const std::string& path);
 
@@ -56,9 +55,9 @@ private:
 
 	//Shader variables
 	vec3 combVector = vec3(0,0,1);
-	float combStrength = 0.1f;
+	float combStrength = 0.3f;
 	int numShells = 1;
-	float shellIncrement = 0.01f;
+	float shellIncrement = 0.1f;
 	float maxOpacity = 0.9f;
 
 	//
